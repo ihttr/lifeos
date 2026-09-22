@@ -1,0 +1,8 @@
+import { redirect } from "@/i18n/navigation"
+
+export default async function LocaleRootPage({
+  params,
+}: PageProps<"/[locale]">) {
+  const { locale } = await params
+  redirect({ href: "/dashboard", locale })
+}

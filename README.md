@@ -1,36 +1,266 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LifeOS
 
-## Getting Started
+نظام شخصي لإدارة اليوم: مهام، مشاريع، جامعة، تعلّم، أهداف، ملاحظات، مالية، تركيز، وروابط — في لوحة واحدة.
 
-First, run the development server:
+واجهة **عربية (RTL) وإنجليزية (LTR)** مع تبديل فوري، وضع فاتح وداكن، وتصميم مبني للجوال بقدر سطح المكتب.
+
+---
+
+## حالة المشروع
+
+المشروع مبني على مراحل. **النواة جاهزة وتعمل ومُختبَرة**، وبقية الأقسام مخطّطة ولم تُبنَ بعد.
+
+### جاهز ويعمل
+
+| القسم | ما فيه |
+|---|---|
+| **المصادقة** | تسجيل دخول، حماية كل المسارات، عزل كامل لبيانات المستخدم |
+| **لوحة التحكم** | تحية وتاريخ ميلادي/هجري، خمس بطاقات أرقام، مهام اليوم، القادم، المشاريع النشطة، الأهداف، إجراءات سريعة |
+| **المهام** | CRUD كامل، ثلاث واجهات (قائمة/لوحة كانبان بالسحب/تقويم)، مهام فرعية، وسوم، تكرار، أولويات، بحث وتصفية وفرز، إجراءات جماعية، أرشفة، نسخ |
+| **المشاريع** | CRUD، مراحل (milestones)، تقدم محسوب، روابط GitHub/موقع/نشر، تقنيات، صفحة تفصيلية بتبويبات |
+| **الملاحظات** | محرّر Markdown بمعاينة، تصنيفات، وسوم، مفضلة، أرشيف، بحث، ربط بمشروع/مادة/مسار |
+| **البنية** | i18n، ثيم، شريط جانبي وتنقّل سفلي للجوال، لوحة أوامر ⌘K، حالات فارغة وأخطاء، تأكيد قبل الحذف |
+
+### لم يُبنَ بعد
+
+الجامعة · التعلّم · الأهداف · المالية · التركيز · التقويم الموحّد · البحث الشامل · الإشعارات · الإحصائيات · الإعدادات · PWA
+
+روابطها موجودة في القائمة الجانبية وتؤدي إلى صفحات غير منشأة بعد.
+
+> **مهم:** مخطط قاعدة البيانات يغطّي **كل** الأقسام، والبيانات التجريبية مزروعة لها كلها.
+> أي قسم جديد يحتاج واجهته فقط — لا تعديل على القاعدة.
+
+---
+
+## الستاك
+
+| الطبقة | الاختيار |
+|---|---|
+| الإطار | Next.js 16 (App Router, RSC, Server Actions, Turbopack) |
+| اللغة | TypeScript صارم |
+| التنسيق | Tailwind CSS v4 + shadcn/ui (Radix) مع دعم RTL |
+| القاعدة | PostgreSQL + Prisma 7 (عبر `@prisma/adapter-pg`) |
+| المصادقة | Auth.js v5 — Credentials + جلسة JWT |
+| التحقق | Zod 4 |
+| الترجمة | next-intl |
+| السحب والإفلات | dnd-kit |
+| الرسوم | Recharts |
+| الاختبارات | Vitest (وحدات) + Playwright (e2e) |
+
+**المتطلبات:** Node.js ≥ 20 (مطوَّر ومُختبَر على Node 26).
+
+---
+
+## التشغيل من الصفر
+
+### ١. التثبيت
+
+```bash
+npm install
+```
+
+### ٢. متغيرات البيئة
+
+انسخ القالب واملأه:
+
+```bash
+cp .env.example .env
+```
+
+| المتغير | الغرض |
+|---|---|
+| `DATABASE_URL` | رابط Postgres. محلياً يأتي من `npm run db:dev`، وفي الإنتاج من Neon (الرابط المجمّع) |
+| `AUTH_SECRET` | مفتاح توقيع الجلسات. ولّده بـ `npx auth secret` |
+| `AUTH_URL` | رابط التطبيق (`http://localhost:3000` محلياً، ورابط Vercel في الإنتاج) |
+| `SEED_USER_EMAIL` | بريد حسابك — يُنشأ عبر `db:seed` |
+| `SEED_USER_PASSWORD` | كلمة المرور (١٠ أحرف فأكثر) |
+| `SEED_USER_NAME` | اسمك كما يظهر في التحية |
+| `DATABASE_POOL_MAX` | اختياري — حجم تجمّع الاتصالات (الافتراضي ٥) |
+
+`.env` مستثنى من git. لا تضع فيه قيماً حقيقية في `.env.example`.
+
+### ٣. قاعدة البيانات
+
+**محلياً** — خادم Postgres يعمل في طرفيتك، بلا Docker ولا تنصيب:
+
+```bash
+npm run db:dev
+```
+
+انسخ `DATABASE_URL` و `SHADOW_DATABASE_URL` اللذين يطبعهما إلى `.env`، واترك الأمر يعمل في نافذة مستقلة.
+
+**للإنتاج** — أنشئ قاعدة مجانية على [neon.tech](https://neon.tech) وضع رابطها المجمّع في `DATABASE_URL`.
+
+### ٤. الهجرات والبيانات
+
+```bash
+npm run db:migrate    # ينشئ الجداول
+npm run db:seed       # ينشئ حسابك + بيانات تجريبية
+```
+
+### ٥. التشغيل
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+افتح <http://localhost:3000> وسجّل دخولك ببيانات `SEED_USER_*`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## الأوامر
 
-## Learn More
+| الأمر | الوظيفة |
+|---|---|
+| `npm run dev` | خادم التطوير |
+| `npm run build` | بناء إنتاجي (يولّد عميل Prisma أولاً) |
+| `npm start` | تشغيل نسخة الإنتاج |
+| `npm run typecheck` | فحص الأنواع |
+| `npm run lint` | ESLint |
+| `npm run db:dev` | خادم Postgres محلي للتطوير |
+| `npm run db:migrate` | إنشاء وتطبيق هجرة جديدة |
+| `npm run db:deploy` | تطبيق الهجرات في الإنتاج |
+| `npm run db:seed` | حسابك + بيانات تجريبية |
+| `npm run db:studio` | متصفّح القاعدة الرسومي |
+| `npm test` | اختبارات الوحدات |
+| `npm run test:e2e` | اختبارات المتصفح |
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## الاختبارات
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm test          # ٢٩ اختبار وحدة — تواريخ، تحقق، تنسيق
+npm run test:e2e  # ٢١ اختبار متصفح — مصادقة، صلاحيات، مهام، مشاريع، ملاحظات
+```
 
-## Deploy on Vercel
+اختبارات المتصفح تشغّل خادم التطوير تلقائياً وتستخدم **Chrome المثبّت على جهازك**
+(لا تنزّل متصفحاً). لاستخدام Edge: `PLAYWRIGHT_CHANNEL=msedge npm run test:e2e`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+بيانات الدخول تُقرأ من `.env` ولا تُكتب في الكود.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+أبرز ما تغطّيه:
+
+- إعادة توجيه الزائر، ورفض كلمة المرور الخاطئة دون إنشاء جلسة.
+- **عزل المستخدمين**: مستخدم لا يرى مشروع/مهمة/ملاحظة مستخدم آخر ولو كتب معرّفها في الرابط (٤٠٤)، ولا يسرّبها البحث، وسجلاته تبقى سليمة.
+- **تعقيم Markdown**: `<img onerror=…>` داخل ملاحظة لا يُنفَّذ.
+- **رفض الروابط الخطرة**: `javascript:` و `data:` مرفوضة في حقول الروابط.
+- دورة حياة المهمة كاملة، والمهام الفرعية، والتصفية، والتبديل بين الواجهات.
+
+### لقطات للمراجعة البصرية
+
+```bash
+npx playwright test --project=setup   # يحفظ الجلسة
+npx tsx scripts/screenshots.mts       # يلتقط كل الصفحات
+```
+
+تنتج `screenshots/` بكل صفحة في: سطح مكتب/جوال × فاتح/داكن × عربي/إنجليزي.
+
+---
+
+## هيكل المشروع
+
+```
+lifeos/
+├─ prisma/
+│  ├─ schema.prisma          # المخطط الكامل لكل الأقسام
+│  ├─ migrations/
+│  └─ seed.ts                # حسابك + بيانات تجريبية isDemo:true
+├─ messages/{ar,en}.json     # كل نصوص الواجهة
+├─ public/fonts/             # خطوط مستضافة ذاتياً
+├─ scripts/
+│  ├─ fetch-fonts.mjs        # يحدّث الخطوط من Google Fonts
+│  ├─ screenshots.mts        # لقطات للمراجعة
+│  └─ e2e-fixture.cjs        # بيانات اختبار عزل المستخدمين
+├─ src/
+│  ├─ app/[locale]/
+│  │  ├─ (auth)/login/
+│  │  └─ (app)/              # كل الصفحات المحمية
+│  ├─ components/
+│  │  ├─ ui/                 # shadcn — لا يُعدّل يدوياً
+│  │  ├─ layout/             # شريط جانبي، تنقّل سفلي، لوحة أوامر
+│  │  ├─ shared/             # حالة فارغة، تأكيد، تقويم، Markdown…
+│  │  └─ tasks|projects|notes|dashboard/
+│  ├─ server/
+│  │  ├─ auth.ts             # requireUserId()
+│  │  ├─ actions/            # كل الكتابة — "use server"
+│  │  └─ queries/            # كل القراءة
+│  ├─ schemas/               # Zod لكل قسم
+│  ├─ lib/                   # db, dates, format, safe-action
+│  ├─ hooks/
+│  └─ i18n/
+├─ tests/{unit,e2e}/
+└─ src/proxy.ts              # حماية المسارات + اللغة (كان middleware.ts قبل Next 16)
+```
+
+### قواعد ثابتة في الكود
+
+1. **لا استعلام Prisma خارج `src/server/{queries,actions}`** — وكل دالة تبدأ بـ `requireUserId()`.
+2. **كل كتابة تمر عبر `createAction()`** — يتحقق من الجلسة، يفحص المدخلات بـ Zod، ويعيد نتيجة موحّدة لا تسرّب تفاصيل الأخطاء.
+3. **لا نص مكتوب في المكوّنات** — كل شيء في `messages/`.
+4. **Tailwind بخصائص منطقية فقط** (`ms-*`, `ps-*`, `start-*`) — بها يعمل RTL تلقائياً. ممنوع `ml-*` و `left-*`.
+5. **لا `new Date()` في منطق الأعمال** — كل التواريخ عبر `src/lib/dates.ts` بتوقيت `Asia/Riyadh` وبداية أسبوع الأحد.
+6. **التقدم محسوب لا مخزّن** — نسبة المشروع والهدف تُحسب من المهام والمراحل، فلا يتعارض رقم محفوظ مع الواقع.
+
+---
+
+## الأمن
+
+- كل استعلام مقيّد بـ `userId`، والتعديل والحذف عبر `updateMany`/`deleteMany` مع `userId` فيصيبان صفر صفوف إن لم يكن السجل ملكك.
+- التحقق من ملكية المشروع/المادة قبل ربط أي مهمة أو ملاحظة بهما.
+- Prisma يمنع حقن SQL (لا استعلامات خام في التطبيق).
+- `rehype-sanitize` على كل Markdown مُقدَّم.
+- الروابط المدخَلة مقيّدة بـ `http`/`https`، والخارجية بـ `rel="noopener noreferrer"`.
+- Server Actions محمية من CSRF افتراضياً في Next.js.
+- حدّ بسيط لمحاولات الدخول، ومقارنة كلمة المرور تتم حتى لو لم يوجد الحساب حتى لا يكشف الفارق الزمني وجوده.
+- ترويسات أمنية في `next.config.ts`: `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`.
+- الأسرار في متغيرات البيئة فقط، و`.env*` خارج git.
+
+---
+
+## النشر على Vercel
+
+1. ارفع المشروع إلى GitHub.
+2. أنشئ قاعدة على [neon.tech](https://neon.tech) وانسخ الرابط **المجمّع** (Pooled).
+3. أنشئ مشروعاً على Vercel واربطه بالمستودع.
+4. أضف متغيرات البيئة: `DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL` (رابط Vercel), و`SEED_USER_*`.
+5. اضبط أمر البناء:
+
+   ```
+   prisma generate && prisma migrate deploy && next build
+   ```
+
+6. بعد أول نشر، شغّل البذرة مرة واحدة لإنشاء حسابك:
+
+   ```bash
+   DATABASE_URL="<رابط Neon>" npm run db:seed
+   ```
+
+7. غيّر `SEED_USER_PASSWORD` لكلمة مرور قوية وأعد `db:seed` (يحدّث كلمة المرور دون مساس ببياناتك).
+
+---
+
+## ملاحظات تطوير
+
+**الخطوط مستضافة ذاتياً.** `next/font/google` لم يستطع تنزيلها في بيئة التطوير هنا، والاستضافة الذاتية أفضل للإنتاج أصلاً: لا طلبات خارجية، أول رسم أسرع، وخصوصية أعلى. لتحديثها:
+
+```bash
+node scripts/fetch-fonts.mjs
+```
+
+**خادم `prisma dev` يسمح بعشرة اتصالات.** لذلك `DATABASE_POOL_MAX` افتراضه ٥، وسكربت بيانات الاختبار يعيد المحاولة عند الرفض. لا علاقة لهذا بالإنتاج على Neon.
+
+**`middleware.ts` صار `proxy.ts`** في Next 16، ويعمل على بيئة Node لا Edge.
+
+**البيانات التجريبية معزولة** بحقل `isDemo`، فيمكن حذفها كلها لاحقاً باستعلام واحد دون المساس ببياناتك:
+
+```sql
+DELETE FROM "Task" WHERE "userId" = '<id>' AND "isDemo" = true;
+```
+
+---
+
+## الخطوة التالية
+
+استخدم النواة أياماً فعلية، ثم رتّب بقية الأقسام حسب ما تحتاجه أنت لا حسب ترتيب القائمة.
+الترتيب المقترح: **الجامعة** (لأن الفصل قائم) ← **الأهداف** ← **التركيز** ← **المالية** ← **التقويم والبحث الشامل** ← **الإحصائيات** ← **PWA**.

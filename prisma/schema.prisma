@@ -1,0 +1,506 @@
+// LifeOS — Prisma schema
+// كل جدول محتوى يحمل userId مع فهرس. لا استعلام خارج src/server/{queries,actions}.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================= Enums =============================
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum Recurrence {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum WorkStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  PAUSED
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum FocusType {
+  WORK
+  BREAK
+}
+
+enum ResourceType {
+  YOUTUBE
+  WEBSITE
+  DOCS
+  COURSE
+  GITHUB
+  OTHER
+}
+
+// ============================= User =============================
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  locale       String   @default("ar")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // إعدادات مؤقت التركيز
+  pomodoroWorkMin      Int @default(25)
+  pomodoroBreakMin     Int @default(5)
+  pomodoroLongBreakMin Int @default(15)
+  pomodoroUntilLong    Int @default(4)
+
+  tasks             Task[]
+  projects          Project[]
+  tags              Tag[]
+  semesters         Semester[]
+  subjects          Subject[]
+  assignments       Assignment[]
+  exams             Exam[]
+  learningPaths     LearningPath[]
+  resources         Resource[]
+  notes             Note[]
+  goals             Goal[]
+  transactions      Transaction[]
+  focusSessions     FocusSession[]
+  bookmarks         Bookmark[]
+  notificationReads NotificationRead[]
+}
+
+// ============================= Tasks =============================
+
+model Task {
+  id          String     @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  priority    Priority   @default(MEDIUM)
+  dueDate     DateTime?  @db.Date
+  dueTime     String? // "HH:mm" بتوقيت الرياض
+  recurrence  Recurrence @default(NONE)
+  category    String?
+  notes       String?
+  position    Int        @default(0)
+  completedAt DateTime?
+  archivedAt  DateTime?
+  isDemo      Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  projectId String?
+  subjectId String?
+
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project  Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  subject  Subject?       @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  subtasks Subtask[]
+  tags     Tag[]          @relation("TaskTags")
+  focus    FocusSession[]
+
+  @@index([userId, status])
+  @@index([userId, dueDate])
+  @@index([userId, archivedAt])
+  @@index([userId, projectId])
+  @@index([userId, createdAt])
+}
+
+model Subtask {
+  id       String  @id @default(cuid())
+  taskId   String
+  title    String
+  done     Boolean @default(false)
+  position Int     @default(0)
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+}
+
+model Tag {
+  id     String  @id @default(cuid())
+  userId String
+  name   String
+  color  String?
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks     Task[]     @relation("TaskTags")
+  notes     Note[]     @relation("NoteTags")
+  bookmarks Bookmark[] @relation("BookmarkTags")
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+// ============================= Projects =============================
+
+model Project {
+  id           String        @id @default(cuid())
+  userId       String
+  name         String
+  description  String?
+  status       ProjectStatus @default(PLANNING)
+  priority     Priority      @default(MEDIUM)
+  startDate    DateTime?     @db.Date
+  deadline     DateTime?     @db.Date
+  technologies String[]      @default([])
+  githubUrl    String?
+  websiteUrl   String?
+  deployUrl    String?
+  notes        String?
+  color        String?
+  isDemo       Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks        Task[]
+  milestones   Milestone[]
+  projectNotes Note[]
+
+  @@index([userId, status])
+  @@index([userId, deadline])
+}
+
+model Milestone {
+  id        String    @id @default(cuid())
+  projectId String
+  title     String
+  done      Boolean   @default(false)
+  dueDate   DateTime? @db.Date
+  position  Int       @default(0)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+// ============================= University =============================
+
+model Semester {
+  id        String    @id @default(cuid())
+  userId    String
+  name      String
+  startDate DateTime? @db.Date
+  endDate   DateTime? @db.Date
+  isActive  Boolean   @default(false)
+  isDemo    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjects Subject[]
+
+  @@index([userId, isActive])
+}
+
+model Subject {
+  id         String   @id @default(cuid())
+  userId     String
+  semesterId String
+  name       String
+  code       String?
+  instructor String?
+  credits    Int      @default(3)
+  color      String?
+  notes      String?
+  isDemo     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  semester     Semester     @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  assignments  Assignment[]
+  exams        Exam[]
+  tasks        Task[]
+  subjectNotes Note[]
+  resources    Resource[]
+
+  @@index([userId, semesterId])
+}
+
+model Assignment {
+  id          String     @id @default(cuid())
+  userId      String
+  subjectId   String
+  title       String
+  description String?
+  dueDate     DateTime
+  status      WorkStatus @default(TODO)
+  grade       Float?
+  maxGrade    Float?
+  isDemo      Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@index([userId, dueDate])
+  @@index([userId, status])
+  @@index([subjectId])
+}
+
+model Exam {
+  id        String   @id @default(cuid())
+  userId    String
+  subjectId String
+  title     String
+  date      DateTime
+  location  String?
+  weight    Int? // نسبة الاختبار من الدرجة
+  notes     String?
+  isDemo    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@index([subjectId])
+}
+
+// ============================= Learning =============================
+
+model LearningPath {
+  id          String     @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  category    String?
+  color       String?
+  status      GoalStatus @default(ACTIVE)
+  isDemo      Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sections  LearningSection[]
+  resources Resource[]
+  pathNotes Note[]
+
+  @@index([userId, status])
+}
+
+model LearningSection {
+  id             String @id @default(cuid())
+  learningPathId String
+  title          String
+  position       Int    @default(0)
+
+  learningPath LearningPath     @relation(fields: [learningPathId], references: [id], onDelete: Cascade)
+  lessons      LearningLesson[]
+
+  @@index([learningPathId])
+}
+
+model LearningLesson {
+  id        String    @id @default(cuid())
+  sectionId String
+  title     String
+  notes     String?
+  done      Boolean   @default(false)
+  doneAt    DateTime?
+  position  Int       @default(0)
+
+  section   LearningSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  resources Resource[]
+
+  @@index([sectionId])
+}
+
+model Resource {
+  id     String       @id @default(cuid())
+  userId String
+  title  String
+  url    String
+  type   ResourceType @default(WEBSITE)
+
+  learningPathId String?
+  lessonId       String?
+  subjectId      String?
+
+  createdAt DateTime @default(now())
+
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  learningPath LearningPath?   @relation(fields: [learningPathId], references: [id], onDelete: Cascade)
+  lesson       LearningLesson? @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  subject      Subject?        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([learningPathId])
+  @@index([subjectId])
+}
+
+// ============================= Notes =============================
+
+model Note {
+  id         String    @id @default(cuid())
+  userId     String
+  title      String
+  contentMd  String    @default("")
+  category   String?
+  isFavorite Boolean   @default(false)
+  archivedAt DateTime?
+  isDemo     Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  projectId      String?
+  subjectId      String?
+  learningPathId String?
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project      Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  subject      Subject?      @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  learningPath LearningPath? @relation(fields: [learningPathId], references: [id], onDelete: SetNull)
+  tags         Tag[]         @relation("NoteTags")
+
+  @@index([userId, archivedAt])
+  @@index([userId, isFavorite])
+  @@index([userId, updatedAt])
+}
+
+// ============================= Goals =============================
+
+model Goal {
+  id          String     @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  category    String?
+  deadline    DateTime?  @db.Date
+  status      GoalStatus @default(ACTIVE)
+  isDemo      Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  milestones GoalMilestone[]
+
+  @@index([userId, status])
+  @@index([userId, deadline])
+}
+
+model GoalMilestone {
+  id       String  @id @default(cuid())
+  goalId   String
+  title    String
+  done     Boolean @default(false)
+  position Int     @default(0)
+
+  goal Goal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([goalId])
+}
+
+// ============================= Finance =============================
+
+model Transaction {
+  id          String          @id @default(cuid())
+  userId      String
+  amount      Decimal         @db.Decimal(12, 2)
+  type        TransactionType
+  category    String
+  date        DateTime        @db.Date
+  description String?
+  isDemo      Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@index([userId, type])
+}
+
+// ============================= Focus =============================
+
+model FocusSession {
+  id          String    @id @default(cuid())
+  userId      String
+  type        FocusType @default(WORK)
+  startedAt   DateTime
+  endedAt     DateTime?
+  durationSec Int       @default(0)
+  taskId      String?
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([userId, startedAt])
+}
+
+// ============================= Bookmarks =============================
+
+model Bookmark {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  url         String
+  description String?
+  category    String   @default("PERSONAL")
+  isFavorite  Boolean  @default(false)
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tags Tag[] @relation("BookmarkTags")
+
+  @@index([userId, category])
+  @@index([userId, isFavorite])
+}
+
+// ============================= Notifications =============================
+
+// الإشعارات مشتقة وقت القراءة من التواريخ؛ هنا نخزّن المقروء فقط.
+model NotificationRead {
+  id     String   @id @default(cuid())
+  userId String
+  key    String
+  readAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId])
+}
