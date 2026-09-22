@@ -322,5 +322,31 @@
   "university": {
     "pendingAssignments": "Assignments due",
     "upcomingExams": "Exams ahead"
+  },
+  "goalStatus": {
+    "ACTIVE": "Active",
+    "COMPLETED": "Completed",
+    "PAUSED": "Paused"
+  },
+  "goal": {
+    "one": "Goal",
+    "many": "Goals",
+    "new": "New goal",
+    "title": "Goal",
+    "titlePlaceholder": "What do you want to reach?",
+    "hint": "Break it into small milestones — progress is calculated from them.",
+    "addMilestone": "Add milestone",
+    "milestonesDone": "{done}/{total} milestones done",
+    "allCategories": "All categories",
+    "countLabel": "{count, plural, =0 {No goals} one {# goal} other {# goals}}",
+    "markComplete": "Mark complete",
+    "pause": "Pause",
+    "resume": "Resume",
+    "created": "Goal created",
+    "updated": "Goal updated",
+    "deleted": "Goal deleted",
+    "completed": "Goal completed 🎉",
+    "deleteConfirmTitle": "Delete this goal?",
+    "deleteConfirmBody": "Its milestones are deleted too. This cannot be undone."
   }
 }

@@ -322,5 +322,31 @@
   "university": {
     "pendingAssignments": "واجبات قادمة",
     "upcomingExams": "اختبارات قادمة"
+  },
+  "goalStatus": {
+    "ACTIVE": "نشط",
+    "COMPLETED": "مكتمل",
+    "PAUSED": "متوقف"
+  },
+  "goal": {
+    "one": "هدف",
+    "many": "الأهداف",
+    "new": "هدف جديد",
+    "title": "الهدف",
+    "titlePlaceholder": "ما الذي تريد الوصول إليه؟",
+    "hint": "قسّم الهدف لمراحل صغيرة — التقدم يُحسب منها تلقائياً.",
+    "addMilestone": "إضافة مرحلة",
+    "milestonesDone": "{done}/{total} مرحلة منجزة",
+    "allCategories": "كل التصنيفات",
+    "countLabel": "{count, plural, =0 {لا أهداف} one {هدف واحد} two {هدفان} few {# أهداف} other {# هدفاً}}",
+    "markComplete": "اعتبره مكتملاً",
+    "pause": "إيقاف مؤقت",
+    "resume": "استئناف",
+    "created": "تم إنشاء الهدف",
+    "updated": "تم تحديث الهدف",
+    "deleted": "تم حذف الهدف",
+    "completed": "أُنجز الهدف 🎉",
+    "deleteConfirmTitle": "حذف الهدف؟",
+    "deleteConfirmBody": "ستُحذف مراحله أيضاً. لا يمكن التراجع."
   }
 }

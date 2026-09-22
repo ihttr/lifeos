@@ -21,6 +21,7 @@ const PAGES = [
   ["projects", "/ar/projects"],
   ["notes", "/ar/notes"],
   ["university", "/ar/university"],
+  ["goals", "/ar/goals"],
   ["university-assignments", "/ar/university?tab=assignments"],
   ["university-exams", "/ar/university?tab=exams"],
   ["dashboard-en", "/en/dashboard"],
