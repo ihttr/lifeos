@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server"
 
 import { DashboardView } from "@/components/dashboard/dashboard-view"
+import { resolveWidgets } from "@/components/dashboard/widgets"
 import { PageContainer } from "@/components/shared/page-header"
 import { getDashboardData } from "@/server/queries/dashboard"
 import { getTaskFormOptions } from "@/server/queries/tasks"
@@ -24,9 +25,12 @@ export default async function DashboardPage({
   const { locale } = await params
   setRequestLocale(locale)
 
-  const [user, data, taskOptions] = await Promise.all([
-    getCurrentUser(),
-    getDashboardData(),
+  // نحتاج تفضيلات المستخدم أولاً لنعرف أي بيانات نجلب
+  const user = await getCurrentUser()
+  const widgets = resolveWidgets(user.dashboardWidgets)
+
+  const [data, taskOptions] = await Promise.all([
+    getDashboardData(widgets),
     getTaskFormOptions(),
   ])
 
@@ -34,6 +38,7 @@ export default async function DashboardPage({
     <PageContainer>
       <DashboardView
         data={data}
+        widgets={widgets}
         userName={user.name ?? user.email}
         taskOptions={taskOptions}
       />

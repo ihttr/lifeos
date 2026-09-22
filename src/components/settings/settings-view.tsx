@@ -13,6 +13,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { useTheme } from "next-themes"
 import { useEffect, useState, type FormEvent } from "react"
 
+import { DashboardCustomizer } from "@/components/settings/dashboard-customizer"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { PageHeader } from "@/components/shared/page-header"
 import { Button } from "@/components/ui/button"
@@ -26,6 +27,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useAction } from "@/hooks/use-action"
+
+import type { WidgetId } from "@/components/dashboard/widgets"
 import { usePathname, useRouter } from "@/i18n/navigation"
 import { LOCALE_LABEL, routing, type Locale } from "@/i18n/routing"
 import { formDataToObject } from "@/lib/form"
@@ -38,8 +41,10 @@ import {
 
 export function SettingsView({
   user,
+  widgets,
 }: {
   user: { name: string | null; email: string }
+  widgets: WidgetId[]
 }) {
   const t = useTranslations()
   const locale = useLocale() as Locale
@@ -191,6 +196,9 @@ export function SettingsView({
             </Field>
           </div>
         </section>
+
+        {/* --- لوحة التحكم --- */}
+        <DashboardCustomizer initial={widgets} />
 
         {/* --- البيانات --- */}
         <section className="bg-card rounded-xl border p-4">

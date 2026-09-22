@@ -1,15 +1,23 @@
 import "server-only"
 
 import { db } from "@/lib/db"
-import { dateColumnToISO, startOfWeekISO, todayISO } from "@/lib/dates"
+import {
+  dateColumnToISO,
+  endOfMonthISO,
+  startOfWeekISO,
+  toISODateInTZ,
+  todayISO,
+} from "@/lib/dates"
 import { percentOf } from "@/lib/format"
 import { requireUserId } from "@/server/auth"
 import { getUpcoming } from "@/server/queries/agenda"
 import { getActiveProjects } from "@/server/queries/projects"
 import { getTaskCounts, getTodayTasks } from "@/server/queries/tasks"
 
-/** أهداف نشطة مع نسبة إنجازها — تكفي للوحة التحكم */
-async function getActiveGoals(limit = 4) {
+import type { WidgetId } from "@/components/dashboard/widgets"
+
+/** أهداف نشطة مع نسبة إنجازها */
+async function getActiveGoals(limit = 3) {
   const userId = await requireUserId()
 
   const goals = await db.goal.findMany({
@@ -25,21 +33,20 @@ async function getActiveGoals(limit = 4) {
     take: limit,
   })
 
-  return goals.map((goal) => ({
-    id: goal.id,
-    title: goal.title,
-    category: goal.category,
-    deadline: dateColumnToISO(goal.deadline),
-    total: goal.milestones.length,
-    done: goal.milestones.filter((m) => m.done).length,
-    progress: percentOf(
-      goal.milestones.filter((m) => m.done).length,
-      goal.milestones.length
-    ),
-  }))
+  return goals.map((goal) => {
+    const done = goal.milestones.filter((m) => m.done).length
+    return {
+      id: goal.id,
+      title: goal.title,
+      category: goal.category,
+      deadline: dateColumnToISO(goal.deadline),
+      total: goal.milestones.length,
+      done,
+      progress: percentOf(done, goal.milestones.length),
+    }
+  })
 }
 
-/** ثوانِ التركيز هذا الأسبوع وهذا اليوم */
 async function getFocusSummary() {
   const userId = await requireUserId()
 
@@ -69,21 +76,135 @@ async function getProjectCount() {
   return db.project.count({ where: { userId, status: "IN_PROGRESS" } })
 }
 
+/** الواجبات والاختبارات القادمة من الفصل النشط */
+async function getUniversitySnapshot(limit = 4) {
+  const userId = await requireUserId()
+  const now = new Date()
+
+  const [assignments, exams] = await Promise.all([
+    db.assignment.findMany({
+      where: {
+        userId,
+        status: { not: "DONE" },
+        subject: { semester: { isActive: true } },
+      },
+      select: {
+        id: true,
+        title: true,
+        dueDate: true,
+        subject: { select: { name: true, color: true } },
+      },
+      orderBy: { dueDate: "asc" },
+      take: limit,
+    }),
+    db.exam.findMany({
+      where: {
+        userId,
+        date: { gte: now },
+        subject: { semester: { isActive: true } },
+      },
+      select: {
+        id: true,
+        title: true,
+        date: true,
+        subject: { select: { name: true, color: true } },
+      },
+      orderBy: { date: "asc" },
+      take: 2,
+    }),
+  ])
+
+  return {
+    assignments: assignments.map((row) => ({
+      id: row.id,
+      title: row.title,
+      date: toISODateInTZ(row.dueDate),
+      subject: row.subject.name,
+      color: row.subject.color,
+    })),
+    exams: exams.map((row) => ({
+      id: row.id,
+      title: row.title,
+      date: toISODateInTZ(row.date),
+      subject: row.subject.name,
+      color: row.subject.color,
+    })),
+  }
+}
+
+/** ملخص الشهر الحالي */
+async function getFinanceSnapshot() {
+  const userId = await requireUserId()
+  const month = todayISO().slice(0, 7)
+
+  const grouped = await db.transaction.groupBy({
+    by: ["type"],
+    where: {
+      userId,
+      date: {
+        gte: new Date(`${month}-01T00:00:00.000Z`),
+        lte: new Date(`${endOfMonthISO(`${month}-01`)}T23:59:59.999Z`),
+      },
+    },
+    _sum: { amount: true },
+  })
+
+  const income = Number(grouped.find((g) => g.type === "INCOME")?._sum.amount ?? 0)
+  const expense = Number(
+    grouped.find((g) => g.type === "EXPENSE")?._sum.amount ?? 0
+  )
+
+  return { month, income, expense, balance: income - expense }
+}
+
+async function getRecentNotes(limit = 4) {
+  const userId = await requireUserId()
+
+  const notes = await db.note.findMany({
+    where: { userId, archivedAt: null },
+    select: { id: true, title: true, category: true, updatedAt: true },
+    orderBy: { updatedAt: "desc" },
+    take: limit,
+  })
+
+  return notes.map((note) => ({
+    ...note,
+    updatedAt: note.updatedAt.toISOString(),
+  }))
+}
+
 /**
- * كل ما تحتاجه لوحة التحكم في استعلام واحد متوازٍ.
- * الهدف: الإجابة فوراً على "ما الذي عليّ فعله اليوم؟".
+ * يجلب ما تحتاجه البطاقات الظاهرة فقط.
+ *
+ * البطاقة المخفية لا تُكلّف استعلاماً — وهذا سبب تمرير القائمة
+ * بدل جلب كل شيء ثم إخفاء بعضه في الواجهة.
  */
-export async function getDashboardData() {
-  const [counts, todayTasks, upcoming, projects, goals, focus, activeProjects] =
-    await Promise.all([
-      getTaskCounts(),
-      getTodayTasks(),
-      getUpcoming(14, 6),
-      getActiveProjects(3),
-      getActiveGoals(3),
-      getFocusSummary(),
-      getProjectCount(),
-    ])
+export async function getDashboardData(widgets: WidgetId[]) {
+  const enabled = new Set(widgets)
+
+  const [
+    counts,
+    todayTasks,
+    upcoming,
+    projects,
+    goals,
+    focus,
+    activeProjects,
+    university,
+    finance,
+    notes,
+  ] = await Promise.all([
+    enabled.has("stats") ? getTaskCounts() : null,
+    enabled.has("todayTasks") ? getTodayTasks() : null,
+    enabled.has("upcoming") ? getUpcoming(14, 6) : null,
+    enabled.has("projects") ? getActiveProjects(3) : null,
+    enabled.has("goals") ? getActiveGoals(3) : null,
+    enabled.has("stats") || enabled.has("focus") ? getFocusSummary() : null,
+    enabled.has("stats") ? getProjectCount() : null,
+    enabled.has("university") ? getUniversitySnapshot() : null,
+    enabled.has("finance") ? getFinanceSnapshot() : null,
+    enabled.has("notes") ? getRecentNotes() : null,
+  ])
 
   return {
     counts,
@@ -93,6 +214,9 @@ export async function getDashboardData() {
     goals,
     focus,
     activeProjects,
+    university,
+    finance,
+    notes,
   }
 }
 

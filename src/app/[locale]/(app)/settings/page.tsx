@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server"
 
 import { PageContainer } from "@/components/shared/page-header"
 import { SettingsView } from "@/components/settings/settings-view"
+import { resolveWidgets } from "@/components/dashboard/widgets"
 import { getCurrentUser } from "@/server/queries/user"
 
 import type { Metadata } from "next"
@@ -26,7 +27,10 @@ export default async function SettingsPage({
 
   return (
     <PageContainer>
-      <SettingsView user={{ name: user.name, email: user.email }} />
+      <SettingsView
+        user={{ name: user.name, email: user.email }}
+        widgets={resolveWidgets(user.dashboardWidgets)}
+      />
     </PageContainer>
   )
 }

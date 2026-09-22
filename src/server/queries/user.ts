@@ -17,6 +17,7 @@ export const getCurrentUser = cache(async () => {
       email: true,
       name: true,
       locale: true,
+      dashboardWidgets: true,
       pomodoroWorkMin: true,
       pomodoroBreakMin: true,
       pomodoroLongBreakMin: true,

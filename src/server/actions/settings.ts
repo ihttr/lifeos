@@ -4,12 +4,37 @@ import { z } from "zod"
 
 import { db } from "@/lib/db"
 import { createAction } from "@/lib/safe-action"
+import { WIDGET_IDS } from "@/components/dashboard/widgets"
 import { optionalText } from "@/schemas/common"
 import { PATHS, revalidate } from "@/server/revalidate"
 
 const profileSchema = z.object({
   name: optionalText(120),
 })
+
+const widgetsSchema = z.object({
+  widgets: z.array(z.enum(WIDGET_IDS)).max(WIDGET_IDS.length),
+})
+
+/**
+ * ترتيب بطاقات لوحة التحكم.
+ *
+ * نزيل التكرار ونقبل القائمة الفارغة (لوحة بلا بطاقات) — لكن
+ * resolveWidgets يعيد الافتراضي عندها، فإخفاء الكل يعني "أعد الافتراضي"
+ * لا "اترك اللوحة خالية".
+ */
+export const updateDashboardWidgets = createAction(
+  widgetsSchema,
+  async ({ widgets }, userId) => {
+    await db.user.update({
+      where: { id: userId },
+      data: { dashboardWidgets: [...new Set(widgets)] },
+    })
+
+    revalidate(PATHS.dashboard, PATHS.settings)
+    return { count: widgets.length }
+  }
+)
 
 export const updateProfile = createAction(profileSchema, async (input, userId) => {
   await db.user.update({

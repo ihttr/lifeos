@@ -82,6 +82,10 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  /// بطاقات لوحة التحكم بالترتيب المختار. الموجود ظاهر والغائب مخفي،
+  /// والمصفوفة الفارغة تعني "استخدم الترتيب الافتراضي".
+  dashboardWidgets String[] @default([])
+
   // إعدادات مؤقت التركيز
   pomodoroWorkMin      Int @default(25)
   pomodoroBreakMin     Int @default(5)
