@@ -385,5 +385,32 @@
     "longBreakMin": "Long break",
     "untilLong": "Sessions before long break",
     "settingsNote": "Applied to the next phase, not the running one."
+  },
+  "finance": {
+    "subtitle": "Income and expenses in Saudi riyals",
+    "new": "New transaction",
+    "type": "Type",
+    "allTypes": "All",
+    "income": "Income",
+    "expense": "Expense",
+    "balance": "Balance",
+    "surplus": "Surplus this month",
+    "deficit": "Deficit this month",
+    "amount": "Amount",
+    "amountHint": "A positive amount — the type above sets the direction",
+    "invalidAmount": "Enter a positive amount",
+    "category": "Category",
+    "month": "Month",
+    "transactions": "Transactions",
+    "trendTitle": "Income vs expenses — six months",
+    "trendHint": "Hover a month for details",
+    "byCategory": "Spending by category",
+    "noExpenses": "No expenses this month.",
+    "emptyTitle": "No transactions this month",
+    "emptyBody": "Record your first one to start tracking income and spending.",
+    "created": "Transaction saved",
+    "updated": "Transaction updated",
+    "deleted": "Transaction deleted",
+    "deleteConfirmTitle": "Delete this transaction?"
   }
 }

@@ -8,8 +8,10 @@ import type { FieldErrors } from "@/lib/safe-action"
 /**
  * أخطاء حقول النموذج القادمة من الخادم.
  *
- * تعيد الرسالة مترجمة، وتتحوّط لأي رسالة ليست مفتاح ترجمة
- * (مثل رسالة افتراضية من Zod) فتعرض الرسالة العامة بدل مفتاح خام.
+ * المخططات تُرجع مفاتيح ترجمة، لكن Zod قد يُرجع رسالته الافتراضية
+ * إن فاتنا ضبط رسالة. نسأل عن وجود المفتاح بـ t.has بدل تخمين بادئته،
+ * حتى تُترجم مفاتيح أي قسم (finance.invalidAmount مثلاً) لا errors.* وحدها،
+ * ويسقط ما ليس مفتاحاً إلى الرسالة العامة بدل عرض نص خام.
  */
 export function useFieldErrors() {
   const t = useTranslations()
@@ -18,7 +20,9 @@ export function useFieldErrors() {
   function error(name: string): string | undefined {
     const key = errors[name]?.[0]
     if (!key) return undefined
-    return key.startsWith("errors.") ? t(key) : t("errors.validation")
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- المفتاح ديناميكي
+    return t.has(key as any) ? t(key as any) : t("errors.validation")
   }
 
   function reset() {
