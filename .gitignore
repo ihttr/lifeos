@@ -55,3 +55,9 @@ next-env.d.ts
 
 # visual review output
 /screenshots
+
+# مهارات الوكلاء التي تولّدها أدوات خارجية (Prisma CLI) — تُعاد إنشاؤها تلقائياً
+/.agents/skills
+/.claude/skills
+/.windsurf
+/skills-lock.json
