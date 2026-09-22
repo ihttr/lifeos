@@ -18,7 +18,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "postinstall": "prisma generate",
-    "db:clean-tests": "tsx scripts/cleanup-test-data.mts"
+    "db:clean-tests": "tsx scripts/cleanup-test-data.mts",
+    "db:bootstrap": "tsx scripts/bootstrap-user.mts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
