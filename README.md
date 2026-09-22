@@ -122,6 +122,7 @@ npm run dev
 | `npm run db:deploy` | تطبيق الهجرات في الإنتاج |
 | `npm run db:seed` | حسابك + بيانات تجريبية |
 | `npm run db:studio` | متصفّح القاعدة الرسومي |
+| `npm run db:clean-tests` | حذف ما خلّفته اختبارات المتصفح |
 | `npm test` | اختبارات الوحدات |
 | `npm run test:e2e` | اختبارات المتصفح |
 
