@@ -20,6 +20,9 @@ const PAGES = [
   ["tasks-calendar", "/ar/tasks?view=calendar"],
   ["projects", "/ar/projects"],
   ["notes", "/ar/notes"],
+  ["university", "/ar/university"],
+  ["university-assignments", "/ar/university?tab=assignments"],
+  ["university-exams", "/ar/university?tab=exams"],
   ["dashboard-en", "/en/dashboard"],
 ] as const
 

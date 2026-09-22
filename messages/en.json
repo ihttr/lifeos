@@ -145,7 +145,8 @@
   "status": {
     "TODO": "To do",
     "IN_PROGRESS": "In progress",
-    "DONE": "Done"
+    "DONE": "Done",
+    "allStatuses": "All statuses"
   },
   "priority": {
     "LOW": "Low",
@@ -241,5 +242,85 @@
     "exam": "Exam",
     "project": "Project",
     "goal": "Goal"
+  },
+  "semester": {
+    "one": "Semester",
+    "new": "New semester",
+    "edit": "Edit semester",
+    "delete": "Delete semester",
+    "name": "Semester name",
+    "namePlaceholder": "Spring 2026",
+    "endDate": "End date",
+    "active": "Current",
+    "setActive": "Make this the current semester",
+    "hint": "Past semesters stay saved — switch between them anytime.",
+    "emptyTitle": "Start by creating a semester",
+    "emptyBody": "A semester groups your subjects, assignments and exams, and past ones stay for reference.",
+    "created": "Semester created",
+    "updated": "Semester updated",
+    "deleted": "Semester deleted",
+    "activated": "This is now your current semester",
+    "deleteConfirmTitle": "Delete this semester?",
+    "deleteConfirmBody": "All its subjects, assignments and exams are deleted. This cannot be undone."
+  },
+  "subject": {
+    "one": "Subject",
+    "many": "Subjects",
+    "new": "New subject",
+    "name": "Subject name",
+    "code": "Code",
+    "instructor": "Instructor",
+    "credits": "Credits",
+    "creditsLabel": "{count, plural, =0 {no credits} one {# credit} other {# credits}}",
+    "assignmentsDone": "{done}/{total} assignments done",
+    "noAssignments": "No assignments for this subject yet.",
+    "pendingCount": "{count, plural, one {# upcoming} other {# upcoming}}",
+    "overdueCount": "{count, plural, one {# overdue} other {# overdue}}",
+    "examCount": "{count, plural, one {# exam} other {# exams}}",
+    "average": "Average {value}%",
+    "emptyTitle": "No subjects this semester",
+    "emptyBody": "Add your subjects to track their assignments, exams and grades.",
+    "created": "Subject added",
+    "updated": "Subject updated",
+    "deleted": "Subject deleted",
+    "deleteConfirmTitle": "Delete this subject?",
+    "deleteConfirmBody": "Its assignments and exams are deleted. Linked tasks and notes stay but lose the subject.",
+    "allSubjects": "All subjects"
+  },
+  "assignment": {
+    "one": "Assignment",
+    "many": "Assignments",
+    "new": "New assignment",
+    "title": "Assignment title",
+    "grade": "Grade",
+    "maxGrade": "out of",
+    "gradeHint": "Leave empty if not graded yet.",
+    "emptyTitle": "No assignments",
+    "emptyBody": "Add one to track its due date and grade.",
+    "created": "Assignment added",
+    "updated": "Assignment updated",
+    "deleted": "Assignment deleted",
+    "deleteConfirmTitle": "Delete this assignment?"
+  },
+  "exam": {
+    "one": "Exam",
+    "many": "Exams",
+    "new": "New exam",
+    "title": "Exam title",
+    "titlePlaceholder": "Midterm",
+    "date": "Date",
+    "location": "Location",
+    "weight": "Weight",
+    "weightHint": "Share of the final grade",
+    "emptyTitle": "No exams",
+    "emptyBody": "Record exam dates so they show in the calendar and upcoming.",
+    "created": "Exam added",
+    "updated": "Exam updated",
+    "deleted": "Exam deleted",
+    "deleteConfirmTitle": "Delete this exam?"
+  },
+  "university": {
+    "pendingAssignments": "Assignments due",
+    "upcomingExams": "Exams ahead"
   }
 }
