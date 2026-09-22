@@ -22,6 +22,7 @@ const PAGES = [
   ["notes", "/ar/notes"],
   ["university", "/ar/university"],
   ["goals", "/ar/goals"],
+  ["focus", "/ar/focus"],
   ["university-assignments", "/ar/university?tab=assignments"],
   ["university-exams", "/ar/university?tab=exams"],
   ["dashboard-en", "/en/dashboard"],

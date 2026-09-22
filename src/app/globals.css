@@ -73,9 +73,10 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
+  /* لوحة مخططات مُتحقَّق منها: نطاق إضاءة، حد تشبّع، فصل لعمى الألوان، وتباين ≥ 3:1 */
   --chart-1: oklch(0.55 0.19 265);
   --chart-2: oklch(0.63 0.13 195);
-  --chart-3: oklch(0.7 0.16 75);
+  --chart-3: oklch(0.65 0.16 75);
   --chart-4: oklch(0.6 0.2 340);
   --chart-5: oklch(0.6 0.15 148);
   --success: oklch(0.55 0.15 150);
@@ -114,11 +115,12 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.7 0.16 265);
-  --chart-2: oklch(0.75 0.12 195);
-  --chart-3: oklch(0.8 0.14 75);
-  --chart-4: oklch(0.72 0.17 340);
-  --chart-5: oklch(0.73 0.14 148);
+  /* نطاق الإضاءة في الوضع الداكن أضيق: 0.48–0.67 */
+  --chart-1: oklch(0.66 0.17 265);
+  --chart-2: oklch(0.65 0.13 195);
+  --chart-3: oklch(0.66 0.15 75);
+  --chart-4: oklch(0.65 0.18 340);
+  --chart-5: oklch(0.65 0.15 148);
   --success: oklch(0.72 0.15 150);
   --success-foreground: oklch(0.145 0 0);
   --warning: oklch(0.8 0.14 70);
