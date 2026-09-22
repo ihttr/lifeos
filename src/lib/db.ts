@@ -16,6 +16,21 @@ if (!connectionString) {
 }
 
 /**
+ * محوّلات التعريف تتوقّع رابط Postgres مباشراً، وتفشل برسالة غامضة
+ * مع روابط Accelerate/Prisma Postgres ذات الصيغة prisma+postgres://
+ * التي يحقنها تكامل Vercel. نكشف الخطأ هنا برسالة واضحة.
+ */
+if (!/^postgres(ql)?:\/\//.test(connectionString)) {
+  const scheme = connectionString.split("://")[0]
+  throw new Error(
+    `DATABASE_URL يبدأ بـ "${scheme}://" وهي صيغة لا يفهمها @prisma/adapter-pg.\n` +
+      "استخدم رابط TCP المباشر بصيغة postgres:// أو postgresql://\n" +
+      "— من Neon: خيار Pooled connection\n" +
+      "— من Prisma Postgres: Connection details في console.prisma.io (لا رابط Accelerate)"
+  )
+}
+
+/**
  * حجم تجمّع الاتصالات.
  *
  * مع Prisma 7 ومحوّلات التعريف، معامل connection_limit في الرابط يُتجاهل —

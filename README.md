@@ -250,6 +250,12 @@ lifeos/
   الإعداد يضبط `trustHost: true`، فيمكنك أيضاً حذف المتغير كلياً ويستنتج الرابط تلقائياً.
 - **`DATABASE_URL`** لا بد أن يكون الرابط **المجمّع** (Pooled) من Neon لا المباشر،
   لأن كل استدعاء serverless يفتح اتصالاً جديداً.
+- **لا تضغط زر تكامل Prisma Postgres في Vercel.** يحقن رابطاً بصيغة
+  `prisma+postgres://` (Accelerate) لا يفهمها `@prisma/adapter-pg`، فيفشل البناء
+  بالخطأ `P1013: The provided database string is invalid`.
+  لو أردت Prisma Postgres، خذ رابط **TCP المباشر** من
+  [console.prisma.io](https://console.prisma.io) بصيغة
+  `postgres://…@db.prisma.io:5432/postgres?sslmode=require` وضعه يدوياً.
 
 ---
 
