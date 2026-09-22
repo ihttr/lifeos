@@ -332,6 +332,60 @@ export function DashboardView({
         )
       }
 
+      case "learning":
+        if (!data.learning) return null
+        return (
+          <section>
+            <SectionHeader
+              title={t("nav.learning")}
+              href="/learning"
+              linkLabel={t("common.all")}
+            />
+            {data.learning.length === 0 ? (
+              <EmptyCard text={t("learning.emptyTitle")} />
+            ) : (
+              <ul className="space-y-2">
+                {data.learning.map((path) => (
+                  <li key={path.id}>
+                    <Link
+                      href={`/learning?open=${path.id}`}
+                      className="bg-card hover:bg-accent/40 block rounded-xl border p-3 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="size-2 shrink-0 rounded-full"
+                          style={{ background: path.color ?? "var(--chart-1)" }}
+                        />
+                        <span className="truncate text-sm font-medium">
+                          {path.title}
+                        </span>
+                        <span className="text-muted-foreground ms-auto shrink-0 text-xs tabular-nums">
+                          {path.done}/{path.total}
+                        </span>
+                      </div>
+
+                      <ProgressBar
+                        value={path.progress}
+                        color={path.color}
+                        size="sm"
+                        className="mt-2"
+                      />
+
+                      {/* الدرس التالي — ما يجعل البطاقة قابلة للتنفيذ */}
+                      {path.nextLesson ? (
+                        <p className="text-muted-foreground mt-2 flex items-center gap-1.5 truncate text-xs">
+                          <CircleDashedIcon className="size-3 shrink-0" />
+                          {t("widgets.nextLesson", { title: path.nextLesson })}
+                        </p>
+                      ) : null}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )
+
       case "focus":
         if (!data.focus) return null
         return (

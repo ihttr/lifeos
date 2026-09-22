@@ -564,6 +564,9 @@
     "quickActions": "إجراءات سريعة",
     "quickActionsDesc": "أزرار وصول سريع للأقسام",
     "moveUp": "تحريك {name} للأعلى",
-    "moveDown": "تحريك {name} للأسفل"
+    "moveDown": "تحريك {name} للأسفل",
+    "learning": "التعلّم",
+    "learningDesc": "المسارات النشطة والدرس التالي في كل منها",
+    "nextLesson": "التالي: {title}"
   }
 }

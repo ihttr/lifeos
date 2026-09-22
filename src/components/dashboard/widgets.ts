@@ -1,5 +1,6 @@
 import {
   BookOpenCheckIcon,
+  BookOpenIcon,
   CalendarClockIcon,
   FolderKanbanIcon,
   LayoutGridIcon,
@@ -27,6 +28,7 @@ export const WIDGET_IDS = [
   "projects",
   "goals",
   "university",
+  "learning",
   "focus",
   "finance",
   "notes",
@@ -85,6 +87,13 @@ export const WIDGETS: Record<WidgetId, WidgetMeta> = {
     labelKey: "widgets.university",
     descriptionKey: "widgets.universityDesc",
     Icon: BookOpenCheckIcon,
+    wide: false,
+  },
+  learning: {
+    id: "learning",
+    labelKey: "widgets.learning",
+    descriptionKey: "widgets.learningDesc",
+    Icon: BookOpenIcon,
     wide: false,
   },
   focus: {

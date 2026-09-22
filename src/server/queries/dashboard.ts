@@ -157,6 +157,50 @@ async function getFinanceSnapshot() {
   return { month, income, expense, balance: income - expense }
 }
 
+/**
+ * المسارات النشطة مع الدرس التالي غير المنجز.
+ * الدرس التالي هو ما يجعل البطاقة قابلة للتنفيذ لا مجرد شريط تقدم.
+ */
+async function getLearningSnapshot(limit = 3) {
+  const userId = await requireUserId()
+
+  const paths = await db.learningPath.findMany({
+    where: { userId, status: "ACTIVE" },
+    select: {
+      id: true,
+      title: true,
+      color: true,
+      sections: {
+        select: {
+          position: true,
+          lessons: {
+            select: { title: true, done: true, position: true },
+            orderBy: { position: "asc" },
+          },
+        },
+        orderBy: { position: "asc" },
+      },
+    },
+    orderBy: { updatedAt: "desc" },
+    take: limit,
+  })
+
+  return paths.map((path) => {
+    const lessons = path.sections.flatMap((section) => section.lessons)
+    const done = lessons.filter((lesson) => lesson.done).length
+
+    return {
+      id: path.id,
+      title: path.title,
+      color: path.color,
+      total: lessons.length,
+      done,
+      progress: percentOf(done, lessons.length),
+      nextLesson: lessons.find((lesson) => !lesson.done)?.title ?? null,
+    }
+  })
+}
+
 async function getRecentNotes(limit = 4) {
   const userId = await requireUserId()
 
@@ -191,6 +235,7 @@ export async function getDashboardData(widgets: WidgetId[]) {
     focus,
     activeProjects,
     university,
+    learning,
     finance,
     notes,
   ] = await Promise.all([
@@ -202,6 +247,7 @@ export async function getDashboardData(widgets: WidgetId[]) {
     enabled.has("stats") || enabled.has("focus") ? getFocusSummary() : null,
     enabled.has("stats") ? getProjectCount() : null,
     enabled.has("university") ? getUniversitySnapshot() : null,
+    enabled.has("learning") ? getLearningSnapshot() : null,
     enabled.has("finance") ? getFinanceSnapshot() : null,
     enabled.has("notes") ? getRecentNotes() : null,
   ])
@@ -215,6 +261,7 @@ export async function getDashboardData(widgets: WidgetId[]) {
     focus,
     activeProjects,
     university,
+    learning,
     finance,
     notes,
   }

@@ -564,6 +564,9 @@
     "quickActions": "Quick actions",
     "quickActionsDesc": "Shortcut buttons to each section",
     "moveUp": "Move {name} up",
-    "moveDown": "Move {name} down"
+    "moveDown": "Move {name} down",
+    "learning": "Learning",
+    "learningDesc": "Active paths and the next lesson in each",
+    "nextLesson": "Next: {title}"
   }
 }

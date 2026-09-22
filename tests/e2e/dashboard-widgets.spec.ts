@@ -87,4 +87,30 @@ test.describe("تخصيص لوحة التحكم", () => {
       page.getByRole("button", { name: "حفظ", exact: true }).last()
     ).toBeDisabled()
   })
+
+  test("بطاقة التعلّم تعرض التقدم والدرس التالي", async ({ page }) => {
+    await page.goto("/ar/settings")
+    await page
+    .locator("li")
+    .filter({ hasText: "المسارات النشطة والدرس التالي" })
+    .getByRole("switch")
+    .click()
+    await page.getByRole("button", { name: "حفظ", exact: true }).last().click()
+    await expect(page.getByText("حُفظ ترتيب اللوحة")).toBeVisible()
+
+    await page.goto("/ar/dashboard")
+    await expect(page.getByRole("heading", { name: "التعلّم" })).toBeVisible()
+
+    // من البيانات التجريبية: مسار الأمن السيبراني، الدرس التالي "المسح بـ Nmap"
+    const card = page.locator("li").filter({ hasText: "الأمن السيبراني" })
+    await expect(card).toBeVisible()
+    await expect(card).toContainText("التالي:")
+    await expect(card.getByRole("progressbar")).toBeVisible()
+
+    // النقر ينقل للمسار مفتوحاً
+    await card.getByRole("link").click()
+    await expect(page).toHaveURL(/\/ar\/learning\?open=/)
+
+    await resetToDefaults(page)
+  })
 })
