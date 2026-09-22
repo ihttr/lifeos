@@ -7,18 +7,23 @@ import { useState, type ReactNode } from "react"
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { CommandPalette } from "@/components/layout/command-palette"
+import { NotificationBell } from "@/components/layout/notification-bell"
 import { UserMenu } from "@/components/layout/user-menu"
 import { Logo } from "@/components/shared/logo"
 import { Button } from "@/components/ui/button"
+
+import type { NotificationDTO } from "@/server/queries/notifications"
 
 export function AppShell({
   children,
   userName,
   userEmail,
+  notifications,
 }: {
   children: ReactNode
   userName: string
   userEmail: string
+  notifications: NotificationDTO[]
 }) {
   const t = useTranslations()
   const [searchOpen, setSearchOpen] = useState(false)
@@ -29,6 +34,7 @@ export function AppShell({
         onOpenSearch={() => setSearchOpen(true)}
         userName={userName}
         userEmail={userEmail}
+        notifications={notifications}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -46,6 +52,7 @@ export function AppShell({
             >
               <SearchIcon className="size-4" />
             </Button>
+            <NotificationBell notifications={notifications} />
             <UserMenu name={userName} email={userEmail} compact />
           </div>
         </header>

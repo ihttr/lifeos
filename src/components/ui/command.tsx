@@ -39,12 +39,15 @@ function CommandDialog({
   children,
   className,
   showCloseButton = false,
+  // البحث قد يتم على الخادم، فنسمح بتعطيل ترشيح cmdk المحلي
+  shouldFilter,
   ...props
 }: React.ComponentProps<typeof Dialog> & {
   title?: string
   description?: string
   className?: string
   showCloseButton?: boolean
+  shouldFilter?: boolean
 }) {
   return (
     <Dialog {...props}>
@@ -59,7 +62,8 @@ function CommandDialog({
         )}
         showCloseButton={showCloseButton}
       >
-        {children}
+        {/* الأبناء يحتاجون سياق Command — وإلا لم يعمل الإدخال ولا الترشيح */}
+        <Command shouldFilter={shouldFilter}>{children}</Command>
       </DialogContent>
     </Dialog>
   )

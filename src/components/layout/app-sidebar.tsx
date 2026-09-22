@@ -5,9 +5,12 @@ import { SearchIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import { NAV_FOOTER, NAV_GROUPS, type NavItem } from "@/components/layout/nav-items"
+import { NotificationBell } from "@/components/layout/notification-bell"
 import { UserMenu } from "@/components/layout/user-menu"
 import { Logo } from "@/components/shared/logo"
 import { Link, usePathname } from "@/i18n/navigation"
+
+import type { NotificationDTO } from "@/server/queries/notifications"
 
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`)
@@ -40,10 +43,12 @@ export function AppSidebar({
   onOpenSearch,
   userName,
   userEmail,
+  notifications,
 }: {
   onOpenSearch: () => void
   userName: string
   userEmail: string
+  notifications: NotificationDTO[]
 }) {
   const t = useTranslations()
   const pathname = usePathname()
@@ -53,6 +58,9 @@ export function AppSidebar({
       <div className="flex h-14 items-center gap-2.5 px-4">
         <Logo className="size-7 rounded-md" />
         <span className="font-semibold tracking-tight">{t("app.name")}</span>
+        <div className="ms-auto -me-1">
+          <NotificationBell notifications={notifications} />
+        </div>
       </div>
 
       <div className="px-3 pb-3">

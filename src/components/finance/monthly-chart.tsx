@@ -64,22 +64,31 @@ export function MonthlyChart({ data }: { data: MonthTotals[] }) {
             >
               {/* فجوة ٢px بين العمودين المتجاورين */}
               <span className="flex h-full items-end justify-center gap-[2px]">
+                {/* الصفر محايد اللون حتى لا يُقرأ كمبلغ صغير */}
                 <span
                   className={cn(
-                    "bg-chart-1 w-1/2 max-w-5 rounded-t-[4px] transition-opacity",
-                    isActive && "opacity-80"
+                    "w-1/2 max-w-5 rounded-t-[4px] transition-opacity",
+                    month.income > 0 ? "bg-chart-1" : "bg-muted",
+                    isActive && month.income > 0 && "opacity-80"
                   )}
                   style={{
-                    height: `${month.income > 0 ? Math.max(3, (month.income / max) * 100) : 0.8}%`,
+                    height:
+                      month.income > 0
+                        ? `${Math.max(4, (month.income / max) * 100)}%`
+                        : "3px",
                   }}
                 />
                 <span
                   className={cn(
-                    "bg-chart-3 w-1/2 max-w-5 rounded-t-[4px] transition-opacity",
-                    isActive && "opacity-80"
+                    "w-1/2 max-w-5 rounded-t-[4px] transition-opacity",
+                    month.expense > 0 ? "bg-chart-3" : "bg-muted",
+                    isActive && month.expense > 0 && "opacity-80"
                   )}
                   style={{
-                    height: `${month.expense > 0 ? Math.max(3, (month.expense / max) * 100) : 0.8}%`,
+                    height:
+                      month.expense > 0
+                        ? `${Math.max(4, (month.expense / max) * 100)}%`
+                        : "3px",
                   }}
                 />
               </span>

@@ -419,7 +419,13 @@ async function seedTasks(
     },
   ]
 
-  for (const data of rows) await db.task.create({ data })
+  // نوزّع createdAt على أيام سابقة: لو أُنشئت كلها الآن لظهرت
+  // في الإحصائيات كشوكة واحدة بدل اتجاه معقول
+  for (const [index, data] of rows.entries()) {
+    await db.task.create({
+      data: { ...data, createdAt: at(-(index + 1), "09:00") },
+    })
+  }
 }
 
 async function seedLearning(userId: string) {
