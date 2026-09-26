@@ -54,3 +54,16 @@ export function ratio(done: number, total: number): number {
 export function percentOf(done: number, total: number): number {
   return Math.round(ratio(done, total) * 100)
 }
+
+/**
+ * صيغة العدد العربية للأيام: يوم، يومين، 3 أيام، 11 يوماً.
+ *
+ * Intl.PluralRules يعطي الفئة الصحيحة لكن لا يعطي الصيغة، والعربية
+ * فيها المثنى — فالجدول أصدق من محاولة توليدها.
+ */
+export function arabicDays(count: number): string {
+  if (count === 1) return "يوم"
+  if (count === 2) return "يومين"
+  if (count <= 10) return `${count} أيام`
+  return `${count} يوماً`
+}

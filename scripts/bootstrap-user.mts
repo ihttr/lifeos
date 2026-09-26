@@ -22,6 +22,7 @@ import { PrismaClient } from "../src/generated/prisma/client"
 const email = (process.env.SEED_USER_EMAIL ?? "").toLowerCase().trim()
 const password = process.env.SEED_USER_PASSWORD ?? ""
 const name = process.env.SEED_USER_NAME?.trim() || null
+const telegramChatId = process.env.TELEGRAM_CHAT_ID?.trim() || null
 
 if (!email || !password) {
   console.log(
@@ -53,10 +54,14 @@ try {
 
   const passwordHash = await bcrypt.hash(password, 12)
 
+  // معرّف المحادثة يُضبط من نفس المكان: متغيّر بيئة واحد يفعّل البوت.
+  // نمرّر undefined لا null عند غيابه، حتى لا يفصل نشرٌ لاحقٌ بوتاً مربوطاً.
+  const chat = telegramChatId ?? undefined
+
   await db.user.upsert({
     where: { email },
-    update: { passwordHash, name },
-    create: { email, passwordHash, name },
+    update: { passwordHash, name, telegramChatId: chat },
+    create: { email, passwordHash, name, telegramChatId: chat },
   })
 
   console.log(
@@ -64,6 +69,8 @@ try {
       ? `✓ حُدّثت كلمة مرور الحساب: ${email}`
       : `✓ أُنشئ الحساب: ${email}`
   )
+
+  if (telegramChatId) console.log(`✓ رُبطت محادثة تيليجرام: ${telegramChatId}`)
 } finally {
   await db.$disconnect()
 }

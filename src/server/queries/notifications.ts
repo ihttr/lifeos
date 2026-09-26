@@ -3,7 +3,7 @@ import "server-only"
 import { db } from "@/lib/db"
 import { daysFromToday, todayISO } from "@/lib/dates"
 import { requireUserId } from "@/server/auth"
-import { getAgenda } from "@/server/queries/agenda"
+import { getAgendaFor } from "@/server/queries/agenda"
 
 import type { AgendaKind } from "@/server/queries/agenda"
 
@@ -36,7 +36,13 @@ export type NotificationDTO = {
 const LOOKAHEAD_DAYS = 3
 
 export async function getNotifications(): Promise<NotificationDTO[]> {
-  const userId = await requireUserId()
+  return getNotificationsFor(await requireUserId())
+}
+
+/** نفس الاشتقاق بمستخدم صريح — للبوت والمهام المجدولة */
+export async function getNotificationsFor(
+  userId: string
+): Promise<NotificationDTO[]> {
   const today = todayISO()
 
   // نرجع أسبوعين للخلف لالتقاط المتأخر، وثلاثة أيام للأمام للقادم
@@ -46,7 +52,7 @@ export async function getNotifications(): Promise<NotificationDTO[]> {
   to.setUTCDate(to.getUTCDate() + LOOKAHEAD_DAYS)
 
   const [items, reads] = await Promise.all([
-    getAgenda({
+    getAgendaFor(userId, {
       from: from.toISOString().slice(0, 10),
       to: to.toISOString().slice(0, 10),
       includeDone: false,

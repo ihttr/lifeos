@@ -39,17 +39,24 @@ const KIND_COLOR: Record<AgendaKind, string> = {
   goal: "var(--chart-5)",
 }
 
-export async function getAgenda({
-  from,
-  to,
-  includeDone = true,
-}: {
+export type AgendaRange = {
   from: ISODate
   to: ISODate
   includeDone?: boolean
-}): Promise<AgendaItem[]> {
-  const userId = await requireUserId()
+}
 
+export async function getAgenda(range: AgendaRange): Promise<AgendaItem[]> {
+  return getAgendaFor(await requireUserId(), range)
+}
+
+/**
+ * نفس الاستعلام بمستخدم صريح — للبوت والمهام المجدولة، حيث لا جلسة
+ * ولا كوكي. المستدعي مسؤول عن إثبات الهوية قبل تمرير userId.
+ */
+export async function getAgendaFor(
+  userId: string,
+  { from, to, includeDone = true }: AgendaRange
+): Promise<AgendaItem[]> {
   const fromDate = new Date(`${from}T00:00:00.000Z`)
   const toDate = new Date(`${to}T23:59:59.999Z`)
 

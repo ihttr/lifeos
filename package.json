@@ -19,7 +19,10 @@
     "test:e2e": "playwright test",
     "postinstall": "prisma generate",
     "db:clean-tests": "tsx scripts/cleanup-test-data.mts",
-    "db:bootstrap": "tsx scripts/bootstrap-user.mts"
+    "db:bootstrap": "tsx scripts/bootstrap-user.mts",
+    "telegram:whoami": "node scripts/telegram.mjs whoami",
+    "telegram:setup": "node scripts/telegram.mjs setup",
+    "telegram:status": "node scripts/telegram.mjs status"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

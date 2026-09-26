@@ -86,6 +86,10 @@ model User {
   /// والمصفوفة الفارغة تعني "استخدم الترتيب الافتراضي".
   dashboardWidgets String[] @default([])
 
+  /// محادثة تيليجرام المرتبطة. البوت يقبل الرسائل من هذه المحادثة وحدها،
+  /// فوجود القيمة هو قائمة السماح: لا قيمة = لا بوت.
+  telegramChatId String? @unique
+
   // إعدادات مؤقت التركيز
   pomodoroWorkMin      Int @default(25)
   pomodoroBreakMin     Int @default(5)
@@ -107,6 +111,7 @@ model User {
   focusSessions     FocusSession[]
   bookmarks         Bookmark[]
   notificationReads NotificationRead[]
+  telegramSent      TelegramSent[]
 }
 
 // ============================= Tasks =============================
@@ -507,4 +512,20 @@ model NotificationRead {
 
   @@unique([userId, key])
   @@index([userId])
+}
+
+/// ما أرسله البوت فعلاً — يمنع تكرار التنبيه نفسه كل صباح.
+///
+/// المفتاح نفس مفتاح الإشعار (`task:<id>:<days>`)، لكن التسجيل هنا
+/// للقادم فقط: المتأخر واليوم يُرسلان دائماً لأن تكرارهما مقصود.
+model TelegramSent {
+  id     String   @id @default(cuid())
+  userId String
+  key    String
+  sentAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId, sentAt])
 }
