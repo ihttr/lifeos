@@ -114,11 +114,55 @@ const DATE_LEAD = new Set([
   "due",
 ])
 
-/** أفعال البداية: «ضيف مهمة ...» → «...» */
-const LEAD_IN = [
-  ["ضيف", "اضف", "اضافه", "سجل", "add", "new"],
-  ["مهمه", "مهمة", "تاسك", "task", "todo"],
-]
+/** أفعال الإضافة: «ضيف ...» / «أضف ...» */
+const ADD_VERBS = ["ضيف", "اضف", "اضافه", "سجل", "add", "new"]
+
+/**
+ * كلمة النية تأتي مباشرة بعد فعل الإضافة، وهذا التقييد بالموضع هو ما
+ * يفكّ الالتباس: «ضيف مهمة حل واجب الشبكات» مهمةٌ لأن «مهمة» جاءت أولاً،
+ * بينما «ضيف واجب الشبكات» واجبٌ جامعي. لو قبلنا الكلمة من وسط الجملة
+ * لانقلب كل عنوان فيه كلمة «واجب» إلى واجب جامعي.
+ */
+const INTENT_WORDS: Record<string, "task" | "assignment" | "exam"> = {
+  مهمه: "task",
+  تاسك: "task",
+  task: "task",
+  todo: "task",
+  واجب: "assignment",
+  الواجب: "assignment",
+  تكليف: "assignment",
+  اختبار: "exam",
+  الاختبار: "exam",
+  امتحان: "exam",
+  كويز: "exam",
+}
+
+/** أفعال الإنجاز — لا تُقبل إلا في أول الجملة */
+const DONE_VERBS = new Set([
+  "خلصت",
+  "خلصته",
+  "خلصتها",
+  "خلص",
+  "انتهيت",
+  "سويت",
+  "سويته",
+  "سويتها",
+  "انجزت",
+  "أنجزت",
+  "done",
+])
+
+/** تُحذف بعد فعل الإنجاز: «انتهيت من الواجب» */
+const DONE_FILLER = new Set(["من", "ال", "the"])
+
+/** تسبق اسم المادة أحياناً: «واجب المشروع لمادة قواعد البيانات» */
+export const SUBJECT_LEAD = new Set([
+  "ماده",
+  "لماده",
+  "بماده",
+  "مقرر",
+  "لمقرر",
+])
 
 const NUMBER_WORDS: Record<string, number> = {
   يوم: 1,
@@ -138,20 +182,31 @@ const NUMBER_WORDS: Record<string, number> = {
 type Token = { raw: string; norm: string; used: boolean }
 
 /**
- * يحذف فعل الإضافة وكلمة «مهمة» من البداية فقط.
+ * يحذف فعل الإضافة وكلمة النية من البداية، ويعيد النية المكتشفة.
+ * الافتراضي مهمة: أغلب ما يُرسل للبوت مهمة، وكلمة النية استثناء.
  *
- * التقييد بالبداية مقصود: «مهمة» قد تكون أولوية («مهم») أو جزءاً من
- * العنوان («مراجعة مهمة القراءة»)، فلا نحذفها من وسط الجملة.
+ * @param taskOnly لا يبتلع إلا كلمات المهام. تستخدمه parseTaskMessage
+ *   لأن «اختبار الشبكات الخميس» كعنوان مهمة يجب أن يبقى عنوانه كاملاً —
+ *   توجيه النية مسؤولية parseMessage وحدها.
  */
-function stripLeadIn(tokens: Token[]) {
+function stripLeadIn(
+  tokens: Token[],
+  taskOnly = false
+): "task" | "assignment" | "exam" {
   let index = 0
-  for (const group of LEAD_IN) {
-    const token = tokens[index]
-    if (token && !token.used && group.includes(token.norm)) {
-      token.used = true
-      index += 1
-    }
+
+  const verb = tokens[index]
+  if (verb && !verb.used && ADD_VERBS.includes(verb.norm)) {
+    verb.used = true
+    index += 1
   }
+
+  const word = tokens[index]
+  const intent = word && !word.used ? INTENT_WORDS[word.norm] : undefined
+
+  if (intent && (!taskOnly || intent === "task")) word.used = true
+
+  return intent ?? "task"
 }
 
 function nextWeekday(target: number, today: ISODate): ISODate {
@@ -212,7 +267,11 @@ function findDate(
     const after = tokens[i + 2]
 
     // «بعد غد» / «بعد بكرة»
-    if (token.norm === "بعد" && next && ["غد", "بكره", "بكرا"].includes(next.norm)) {
+    if (
+      token.norm === "بعد" &&
+      next &&
+      ["غد", "بكره", "بكرا"].includes(next.norm)
+    ) {
       return consume(2, addDaysISO(today, 2), "بعد غد")
     }
 
@@ -300,17 +359,29 @@ function findPriority(
   return null
 }
 
-export function parseTaskMessage(
-  message: string,
-  today: ISODate = todayISO()
-): ParsedTask {
-  const tokens: Token[] = message
+function tokenize(message: string): Token[] {
+  return message
     .trim()
     .split(/\s+/)
     .filter(Boolean)
     .map((raw) => ({ raw, norm: normalizeWord(raw), used: false }))
+}
 
-  stripLeadIn(tokens)
+function joinUnused(tokens: Token[]): string {
+  return tokens
+    .filter((token) => !token.used)
+    .map((token) => token.raw)
+    .join(" ")
+    .replace(/^[،,\-—:]+|[،,\-—:]+$/g, "")
+    .trim()
+}
+
+export function parseTaskMessage(
+  message: string,
+  today: ISODate = todayISO()
+): ParsedTask {
+  const tokens = tokenize(message)
+  stripLeadIn(tokens, true)
 
   const matched: string[] = []
 
@@ -320,12 +391,7 @@ export function parseTaskMessage(
   const date = findDate(tokens, today)
   if (date) matched.push(date.label)
 
-  const title = tokens
-    .filter((token) => !token.used)
-    .map((token) => token.raw)
-    .join(" ")
-    .replace(/^[،,\-—:]+|[،,\-—:]+$/g, "")
-    .trim()
+  const title = joinUnused(tokens)
 
   return {
     // لو استهلكنا كل شيء فالجملة كلها كانت موعداً — نعيد النص الأصلي
@@ -334,4 +400,146 @@ export function parseTaskMessage(
     priority: priority?.priority ?? "MEDIUM",
     matched,
   }
+}
+
+// ------------------------------------------------------------------ النوايا
+
+export type ParsedMessage =
+  | ({ kind: "task" } & ParsedTask)
+  | {
+      kind: "assignment" | "exam"
+      /** ما بقي بعد نزع الفعل والنية والموعد — منه تُستخرج المادة ثم العنوان */
+      rest: string
+      dueDate: ISODate | null
+      matched: string[]
+    }
+  | {
+      kind: "done"
+      /** ما يبحث عنه المستخدم، أو فارغ إن قال «خلصته» مجرّدة */
+      query: string
+    }
+
+/**
+ * يحدّد ماذا يريد المستخدم من الرسالة.
+ *
+ * الترتيب مقصود: الإنجاز أولاً لأن «خلصت الواجب» لو مرّت على مسار
+ * الإضافة لأنشأت واجباً جديداً بدل أن تُنهي القائم — وهو خطأ صامت
+ * ومزعج، عكس فشل الفهم الذي يظهر فوراً.
+ */
+export function parseMessage(
+  message: string,
+  today: ISODate = todayISO()
+): ParsedMessage {
+  const tokens = tokenize(message)
+  const first = tokens[0]
+
+  if (first && DONE_VERBS.has(first.norm)) {
+    first.used = true
+    // «انتهيت من الواجب» — حشوٌ بعد الفعل لا معنى له في البحث
+    for (let i = 1; i < tokens.length; i += 1) {
+      if (!DONE_FILLER.has(tokens[i].norm)) break
+      tokens[i].used = true
+    }
+    return { kind: "done", query: joinUnused(tokens) }
+  }
+
+  const intent = stripLeadIn(tokens)
+
+  if (intent === "task") {
+    return { kind: "task", ...parseTaskMessage(message, today) }
+  }
+
+  const matched: string[] = []
+  const date = findDate(tokens, today)
+  if (date) matched.push(date.label)
+
+  return {
+    kind: intent,
+    rest: joinUnused(tokens),
+    dueDate: date?.date ?? null,
+    matched,
+  }
+}
+
+// ------------------------------------------------------------------ المواد
+
+export type SubjectLike = { id: string; name: string; code: string | null }
+
+export type SubjectMatch = {
+  subject: SubjectLike
+  /** ما تبقّى بعد نزع اسم المادة — عنوان الواجب إن وُجد */
+  rest: string
+}
+
+/** الكلمات القصيرة («في»، «ال») تطابق كل شيء فلا تصلح دليلاً */
+const MIN_MATCH_LENGTH = 3
+
+/**
+ * ينزع أداة التعريف للمقارنة.
+ *
+ * ضروري لا تحسين: المادة مسجّلة «شبكات الحاسب» والمستخدم يكتب
+ * «الشبكات» — وبلا هذا تفشل أكثر المطابقات شيوعاً. نشترط بقاء ثلاثة
+ * أحرف حتى لا تتحول «الان» إلى «ان».
+ */
+function stem(word: string): string {
+  if (word.startsWith("ال") && word.length - 2 >= MIN_MATCH_LENGTH) {
+    return word.slice(2)
+  }
+  return word
+}
+
+/**
+ * يطابق اسم مادة داخل الجملة، ويعيد ما تبقّى منها.
+ *
+ * المطابقة بالكلمات لا بالنص الكامل، فـ«الشبكات» تطابق «شبكات الحاسب»
+ * و«علوم بيانات» تطابق «علوم البيانات» — الناس لا يكتبون أسماء المواد
+ * كما سُجّلت بالضبط. والأكثر تطابقاً يفوز حتى لا تختطف مادةٌ عامة
+ * الاسمَ من مادة أدق.
+ */
+export function matchSubject(
+  text: string,
+  subjects: SubjectLike[]
+): SubjectMatch | null {
+  const tokens = tokenize(text)
+
+  let best: { subject: SubjectLike; hits: number[]; ratio: number } | null =
+    null
+
+  for (const subject of subjects) {
+    const words = new Set(
+      tokenize(subject.name)
+        .map((t) => t.norm)
+        .filter((w) => w.length >= MIN_MATCH_LENGTH)
+        .map(stem)
+    )
+    const code = subject.code ? normalizeWord(subject.code) : null
+
+    const hits: number[] = []
+    tokens.forEach((token, index) => {
+      if (words.has(stem(token.norm)) || (code && token.norm === code))
+        hits.push(index)
+    })
+
+    if (!hits.length) continue
+
+    const ratio = hits.length / Math.max(words.size, 1)
+    if (
+      !best ||
+      hits.length > best.hits.length ||
+      (hits.length === best.hits.length && ratio > best.ratio)
+    ) {
+      best = { subject, hits, ratio }
+    }
+  }
+
+  if (!best) return null
+
+  for (const index of best.hits) tokens[index].used = true
+
+  // كلمة «لمادة» قبل الاسم لا معنى لها في العنوان
+  const before = tokens[Math.min(...best.hits) - 1]
+  if (before && !before.used && SUBJECT_LEAD.has(before.norm))
+    before.used = true
+
+  return { subject: best.subject, rest: joinUnused(tokens) }
 }

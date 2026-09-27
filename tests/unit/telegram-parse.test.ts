@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest"
 
 import { arabicDays } from "@/lib/format"
-import { parseTaskMessage } from "@/lib/telegram-parse"
+import {
+  matchSubject,
+  parseMessage,
+  parseTaskMessage,
+} from "@/lib/telegram-parse"
 
 /**
  * 2026-09-27 هو الأحد — بداية الأسبوع عندنا.
@@ -158,5 +162,111 @@ describe("arabicDays", () => {
     expect(arabicDays(3)).toBe("3 أيام")
     expect(arabicDays(10)).toBe("10 أيام")
     expect(arabicDays(11)).toBe("11 يوماً")
+  })
+})
+
+// ------------------------------------------------------------------ النوايا
+
+describe("parseMessage — توجيه النية", () => {
+  const at = (text: string) => parseMessage(text, SUNDAY)
+
+  it("الافتراضي مهمة", () => {
+    expect(at("حل الواجب بكرة").kind).toBe("task")
+    expect(at("ضيف مهمة مراجعة").kind).toBe("task")
+  })
+
+  it("«واجب» في البداية تعني واجباً جامعياً", () => {
+    const result = at("ضيف واجب علوم البيانات ينتهي السبت")
+    expect(result).toMatchObject({ kind: "assignment", dueDate: "2026-10-03" })
+  })
+
+  it("«اختبار» في البداية تعني اختباراً", () => {
+    expect(at("ضيف اختبار الشبكات الثلاثاء")).toMatchObject({
+      kind: "exam",
+      dueDate: "2026-09-29",
+    })
+  })
+
+  it("«مهمة» صريحة تتقدّم على «واجب» في الوسط", () => {
+    // الالتباس الحقيقي: «حل واجب» عنوان مهمة لا واجب جامعي
+    const result = at("ضيف مهمة حل واجب الشبكات بكرة")
+    expect(result.kind).toBe("task")
+    expect(result).toMatchObject({ title: "حل واجب الشبكات" })
+  })
+
+  it("«واجب» في وسط الجملة بلا فعل إضافة تبقى مهمة", () => {
+    expect(at("راجع واجب الشبكات بكرة").kind).toBe("task")
+  })
+})
+
+describe("parseMessage — الإنجاز", () => {
+  const at = (text: string) => parseMessage(text, SUNDAY)
+
+  it("يلتقط أفعال الإنجاز مع نص البحث", () => {
+    expect(at("خلصت واجب الشبكات")).toEqual({
+      kind: "done",
+      query: "واجب الشبكات",
+    })
+    expect(at("انتهيت من التقرير")).toEqual({ kind: "done", query: "التقرير" })
+    expect(at("سويت المراجعة")).toEqual({ kind: "done", query: "المراجعة" })
+  })
+
+  it("«خلصته» المجرّدة تعطي بحثاً فارغاً", () => {
+    expect(at("خلصته")).toEqual({ kind: "done", query: "" })
+  })
+
+  it("فعل الإنجاز في الوسط لا يُفعّل الإنجاز", () => {
+    // «مهمة خلصت منها» عنوانٌ لا أمر إنجاز
+    expect(at("راجع ما خلصت منه").kind).toBe("task")
+  })
+})
+
+// ------------------------------------------------------------------ المواد
+
+describe("matchSubject", () => {
+  const subjects = [
+    { id: "s1", name: "علوم البيانات", code: "CS340" },
+    { id: "s2", name: "شبكات الحاسب", code: null },
+    { id: "s3", name: "قواعد البيانات", code: "CS210" },
+  ]
+
+  const match = (text: string) => matchSubject(text, subjects)
+
+  it("يطابق الاسم كاملاً", () => {
+    expect(match("علوم البيانات")?.subject.id).toBe("s1")
+  })
+
+  it("يطابق باسم جزئي — الناس لا يكتبون الاسم كاملاً", () => {
+    expect(match("الشبكات")?.subject.id).toBe("s2")
+    expect(match("شبكات")?.subject.id).toBe("s2")
+  })
+
+  it("الأكثر تطابقاً يفوز على العام", () => {
+    // «البيانات» وحدها تطابق مادتين، لكن «قواعد» تحسمها
+    expect(match("قواعد البيانات")?.subject.id).toBe("s3")
+    expect(match("علوم البيانات")?.subject.id).toBe("s1")
+  })
+
+  it("يطابق برمز المادة", () => {
+    expect(match("cs340")?.subject.id).toBe("s1")
+  })
+
+  it("يعيد ما تبقّى عنواناً", () => {
+    expect(match("المشروع النهائي شبكات")).toMatchObject({
+      rest: "المشروع النهائي",
+    })
+  })
+
+  it("يحذف «لمادة» قبل الاسم", () => {
+    expect(match("المشروع لمادة شبكات")?.rest).toBe("المشروع")
+  })
+
+  it("بلا اسم مادة يعيد null بدل تخمين", () => {
+    expect(match("شيء غير مرتبط")).toBeNull()
+  })
+
+  it("لا يطابق بكلمة قصيرة", () => {
+    // «في» و«ال» تظهر في كل مكان فلا تصلح دليلاً
+    expect(matchSubject("في", subjects)).toBeNull()
   })
 })

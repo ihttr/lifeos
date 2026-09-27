@@ -113,8 +113,13 @@ export async function buildDigest(
   // نقسم الأزرار بين القسمين بدل أن يأخذ المتأخر كلها: كومة متأخرات
   // كبيرة تترك مهام اليوم بلا زر، وهي أَولى بالتنفيذ لأن وقتها لم يفت.
   // وما لا يستهلكه قسمٌ يذهب للآخر، فلا يُهدر زر.
-  const overdueTasks = overdue.filter((n) => n.kind === "task")
-  const todayTasks = today.filter((n) => n.kind === "task")
+  // الواجبات تُنجَز وتُؤجَّل مثل المهام، فتستحق أزرارها. الاختبارات
+  // والمشاريع والأهداف لا — لا معنى لـ«أنجزت اختباراً» من إشعار.
+  const canAct = (n: NotificationDTO) =>
+    n.kind === "task" || n.kind === "assignment"
+
+  const overdueTasks = overdue.filter(canAct)
+  const todayTasks = today.filter(canAct)
   const half = Math.ceil(MAX_BUTTON_TASKS / 2)
 
   const overdueQuota = Math.min(
@@ -148,11 +153,13 @@ export async function buildDigest(
   }
 
   const pairs: InlineButton[][] = actionable.map((item, index) => {
-    // مفتاح الإشعار = `task:<cuid>:<days>` — نستخرج الـ cuid للزر
+    // مفتاح الإشعار = `<kind>:<cuid>:<days>` — نستخرج الـ cuid للزر
     const id = item.key.split(":")[1]
+    // بادئة «a» تميّز الواجب عن المهمة عند عودة الضغطة
+    const prefix = item.kind === "assignment" ? "a" : ""
     return [
-      { text: `✅ ${index + 1}`, data: `d:${id}` },
-      { text: `⏰ ${index + 1}`, data: `p:${id}` },
+      { text: `✅ ${index + 1}`, data: `${prefix}d:${id}` },
+      { text: `⏰ ${index + 1}`, data: `${prefix}p:${id}` },
     ]
   })
 

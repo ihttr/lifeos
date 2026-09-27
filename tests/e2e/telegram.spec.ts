@@ -287,3 +287,126 @@ test.describe("الملخص", () => {
     expect(response.status()).toBe(200)
   })
 })
+
+// ------------------------------------------------------------------ الجامعة
+
+test.describe("الواجبات والاختبارات", () => {
+  test("«ضيف واجب <مادة> <موعد>» ينشئ واجباً مربوطاً بالمادة", async ({
+    request,
+    page,
+  }) => {
+    await send(request, message("ضيف واجب الشبكات ينتهي بعد يومين"))
+
+    const { text, keyboard } = lastSend()
+    expect(text).toContain("📝")
+    expect(text).toContain("📚 الشبكات")
+    // الزرّان يحملان بادئة الواجب لا المهمة
+    expect(keyboard?.[0][0].callback_data).toMatch(/^ad:/)
+    expect(keyboard?.[0][1].callback_data).toMatch(/^ap:/)
+
+    await page.goto("/ar/university?tab=assignments")
+    await expect(page.getByText("واجب الشبكات").first()).toBeVisible()
+  })
+
+  test("عنوان صريح مع «لمادة» يفصل العنوان عن المادة", async ({ request }) => {
+    const title = `بوت تقرير ${Date.now()}`
+    await send(request, message(`ضيف واجب ${title} لمادة قواعد البيانات بكرة`))
+
+    const { text } = lastSend()
+    expect(text).toContain(`أضفت واجب: ${title}`)
+    expect(text).toContain("📚 قواعد البيانات")
+  })
+
+  test("مادة مجهولة تعرض المواد المتاحة بدل رفض مبهم", async ({ request }) => {
+    await send(request, message("ضيف واجب الكيمياء العضوية بكرة"))
+
+    const { text } = lastSend()
+    expect(text).toContain("ما عرفت أي مادة تقصد")
+    expect(text).toContain("الشبكات")
+  })
+
+  test("واجب بلا موعد يسأل عنه — الموعد إلزامي في المخطط", async ({
+    request,
+  }) => {
+    await send(request, message("ضيف واجب الشبكات"))
+    expect(lastSend().text).toContain("متى موعد")
+  })
+
+  test("«ضيف اختبار» ينشئ اختباراً لا واجباً", async ({ request }) => {
+    await send(request, message("ضيف اختبار أمن المعلومات بعد يومين"))
+
+    const { text, keyboard } = lastSend()
+    expect(text).toContain("📕")
+    expect(text).toContain("📚 أمن المعلومات")
+    // الاختبار لا يُنجَز من إشعار، فلا أزرار له
+    expect(keyboard).toBeUndefined()
+  })
+
+  test("«ضيف مهمة ... واجب ...» تبقى مهمة", async ({ request }) => {
+    const title = `بوت حل واجب ${Date.now()}`
+    await send(request, message(`ضيف مهمة ${title} بكرة`))
+
+    // لو انزلقت للمسار الجامعي لطلبت مادة
+    expect(lastSend().text).toContain("✅ أضفت")
+    expect(lastSend().text).toContain(title)
+  })
+})
+
+// ------------------------------------------------------------------ الإنجاز
+
+test.describe("الإنجاز بالجملة", () => {
+  test("«خلصته» تنهي آخر ما أُضيف بلا سؤال", async ({ request, page }) => {
+    const title = `بوت آخر مضاف ${Date.now()}`
+    await send(request, message(`${title} بكرة`))
+
+    calls = []
+    await send(request, message("خلصته"))
+
+    expect(lastSend().text).toContain("✅ أنجزت")
+    expect(lastSend().text).toContain(title)
+
+    await page.goto("/ar/tasks")
+    await expect(page.getByRole("checkbox", { name: title })).toBeChecked()
+  })
+
+  test("اسم مطابق واحد يُنفَّذ مباشرة", async ({ request }) => {
+    const title = `بوت فريد ${Date.now()}`
+    await send(request, message(`${title} بكرة`))
+    await send(request, message(`مهمة أخرى ${Date.now()} بكرة`))
+
+    calls = []
+    await send(request, message(`خلصت ${title}`))
+    expect(lastSend().text).toContain(`✅ أنجزت: ${title}`)
+  })
+
+  test("تطابق متعدد يسأل بأزرار مرقّمة بدل التخمين", async ({ request }) => {
+    const stamp = Date.now()
+    await send(request, message(`بوت مكرر ${stamp} أ بكرة`))
+    await send(request, message(`بوت مكرر ${stamp} ب بكرة`))
+
+    calls = []
+    await send(request, message(`خلصت بوت مكرر ${stamp}`))
+
+    const { text, keyboard } = lastSend()
+    expect(text).toContain("أيّها تقصد؟")
+    expect(keyboard?.flat()).toHaveLength(2)
+    expect(keyboard?.flat()[0].text).toBe("✅ 1")
+  })
+
+  test("اسم غير موجود يردّ بوضوح ولا ينشئ شيئاً", async ({ request }) => {
+    await send(request, message("خلصت شيء غير موجود أبداً"))
+    expect(lastSend().text).toContain("ما لقيت")
+  })
+
+  test("«خلصت» على واجب تُنهي الواجب لا مهمة", async ({ request, page }) => {
+    const title = `بوت واجب منجز ${Date.now()}`
+    await send(request, message(`ضيف واجب ${title} لمادة الشبكات بكرة`))
+
+    calls = []
+    await send(request, message(`خلصت ${title}`))
+    expect(lastSend().text).toContain("✅ أنجزت")
+
+    await page.goto("/ar/university?tab=assignments")
+    await expect(page.getByText(title)).toBeVisible()
+  })
+})

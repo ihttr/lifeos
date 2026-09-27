@@ -29,7 +29,16 @@ const PREFIXES = [
 /** الحركات المالية تستخدم تصنيفاً عشوائياً بهذه البادئة */
 const TRANSACTION_PREFIX = "تصنيف"
 
-const [tasks, projects, notes, goals, subjects, transactions] = await Promise.all([
+const [
+  tasks,
+  projects,
+  notes,
+  goals,
+  assignments,
+  exams,
+  subjects,
+  transactions,
+] = await Promise.all([
   db.task.deleteMany({
     where: { isDemo: false, OR: PREFIXES.map((p) => ({ title: { startsWith: p } })) },
   }),
@@ -42,6 +51,20 @@ const [tasks, projects, notes, goals, subjects, transactions] = await Promise.al
   db.goal.deleteMany({
     where: { isDemo: false, OR: PREFIXES.map((p) => ({ title: { startsWith: p } })) },
   }),
+  // الواجبات والاختبارات قبل المواد: حذف المادة يجرفها بالـ cascade،
+  // لكن اختبارات البوت تنشئها تحت مواد تجريبية حقيقية تبقى.
+  db.assignment.deleteMany({
+    where: {
+      isDemo: false,
+      OR: PREFIXES.map((p) => ({ title: { startsWith: p } })),
+    },
+  }),
+  db.exam.deleteMany({
+    where: {
+      isDemo: false,
+      OR: PREFIXES.map((p) => ({ title: { startsWith: p } })),
+    },
+  }),
   db.subject.deleteMany({
     where: { isDemo: false, OR: PREFIXES.map((p) => ({ name: { startsWith: p } })) },
   }),
@@ -52,7 +75,9 @@ const [tasks, projects, notes, goals, subjects, transactions] = await Promise.al
 
 console.log(
   `حُذف: ${tasks.count} مهمة، ${projects.count} مشروع، ${notes.count} ملاحظة، ` +
-    `${goals.count} هدف، ${subjects.count} مادة، ${transactions.count} حركة`
+    `${goals.count} هدف، ${assignments.count} واجب، ${exams.count} اختبار، ` +
+    `${subjects.count} مادة، ${transactions.count} حركة`
 )
+
 
 await db.$disconnect()
