@@ -22,11 +22,13 @@ export const archiveMetaSchema = z.object({
   subjectId: optionalId,
   assignmentId: optionalId,
   projectId: optionalId,
+  folderId: optionalId,
 })
 
 /** ما يُسجَّل بعد نجاح الرفع للمخزن */
 export const archiveCreateSchema = archiveMetaSchema.extend({
   pathname: z.string().min(1).max(500),
+  filename: z.string().min(1).max(300),
   size: z
     .number()
     .int()
@@ -41,7 +43,35 @@ export const archiveIdSchema = z.object({ id: cuid })
 
 // ------------------------------------------------------------------ التصفية
 
+// ------------------------------------------------------------------ المجلدات
+
+export const folderCreateSchema = z.object({
+  name: requiredText(100),
+  parentId: optionalId,
+})
+
+export const folderRenameSchema = z.object({
+  id: cuid,
+  name: requiredText(100),
+})
+
+export const folderMoveSchema = z.object({
+  id: cuid,
+  parentId: optionalId,
+})
+
+export const folderIdSchema = z.object({ id: cuid })
+
+export const moveFilesSchema = z.object({
+  ids: z.array(cuid).min(1).max(200),
+  folderId: optionalId,
+})
+
+// ------------------------------------------------------------------ التصفية
+
 export const archiveFiltersSchema = z.object({
+  /** المجلد المعروض — غيابه يعني الجذر */
+  folder: z.string().optional().catch(undefined),
   q: z.string().trim().max(120).optional().catch(undefined),
   kind: archiveKind.optional().catch(undefined),
   subjectId: z.string().optional().catch(undefined),

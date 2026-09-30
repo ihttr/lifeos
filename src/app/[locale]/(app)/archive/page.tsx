@@ -4,7 +4,13 @@ import { ArchiveView } from "@/components/archive/archive-view"
 import { PageContainer } from "@/components/shared/page-header"
 import { isBlobConfigured } from "@/lib/storage"
 import { archiveFiltersSchema } from "@/schemas/archive"
-import { getArchiveFiles, getArchiveOptions } from "@/server/queries/archive"
+import {
+  getAllFolders,
+  getArchiveFiles,
+  getArchiveOptions,
+  getFolderPath,
+  getFolders,
+} from "@/server/queries/archive"
 
 import type { Metadata } from "next"
 
@@ -27,8 +33,13 @@ export default async function ArchivePage({
 
   const filters = archiveFiltersSchema.parse(await searchParams)
 
-  const [files, options] = await Promise.all([
+  const folderId = filters.folder ?? null
+
+  const [files, folders, path, allFolders, options] = await Promise.all([
     getArchiveFiles(filters),
+    getFolders(folderId),
+    getFolderPath(folderId),
+    getAllFolders(),
     getArchiveOptions(),
   ])
 
@@ -36,6 +47,9 @@ export default async function ArchivePage({
     <PageContainer>
       <ArchiveView
         files={files}
+        folders={folders}
+        path={path}
+        allFolders={allFolders}
         options={options}
         filters={filters}
         // وجود المخزن يقرَّر على الخادم ويُمرَّر كخاصية: العميل لا يقرأ

@@ -60,6 +60,12 @@ if (staleFiles.length > 0) {
   })
 }
 
+// المجلدات بعد الملفات: حذفها يرفع ما بداخلها بدل أن يمحوه
+const folders = await db.archiveFolder.deleteMany({
+  where: { OR: [{ name: { startsWith: "مجلد " } }, { name: { startsWith: "أرشيف " } },
+    { name: { in: ["الفصل الثاني ١٤٤٧", "المشاريع", "المعامل"] } }] },
+})
+
 const [
   tasks,
   projects,
@@ -105,7 +111,7 @@ const [
 ])
 
 console.log(
-  `حُذف: ${staleFiles.length} ملف أرشيف، ${tasks.count} مهمة، ${projects.count} مشروع، ${notes.count} ملاحظة، ` +
+  `حُذف: ${staleFiles.length} ملف أرشيف، ${folders.count} مجلد، ${tasks.count} مهمة، ${projects.count} مشروع، ${notes.count} ملاحظة، ` +
     `${goals.count} هدف، ${assignments.count} واجب، ${exams.count} اختبار، ` +
     `${subjects.count} مادة، ${transactions.count} حركة`
 )

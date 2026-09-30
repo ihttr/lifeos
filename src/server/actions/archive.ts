@@ -5,10 +5,20 @@ import {
   archiveCreateSchema,
   archiveIdSchema,
   archiveUpdateSchema,
+  folderCreateSchema,
+  folderIdSchema,
+  folderMoveSchema,
+  folderRenameSchema,
+  moveFilesSchema,
 } from "@/schemas/archive"
 import {
   createArchiveEntry,
+  createFolder,
   deleteArchiveEntry,
+  deleteFolder,
+  moveFiles,
+  moveFolder,
+  renameFolder,
   updateArchiveEntry,
 } from "@/server/core/archive"
 
@@ -32,4 +42,32 @@ export const updateArchiveFile = createAction(
 export const deleteArchiveFile = createAction(
   archiveIdSchema,
   ({ id }, userId) => deleteArchiveEntry(userId, id)
+)
+
+// ------------------------------------------------------------------ المجلدات
+
+export const createArchiveFolder = createAction(
+  folderCreateSchema,
+  (input, userId) => createFolder(userId, input)
+)
+
+export const renameArchiveFolder = createAction(
+  folderRenameSchema,
+  ({ id, name }, userId) => renameFolder(userId, id, name)
+)
+
+export const moveArchiveFolder = createAction(
+  folderMoveSchema,
+  ({ id, parentId }, userId) => moveFolder(userId, id, parentId)
+)
+
+/** الحذف يرفع المحتوى للأب — لا يفقد المستخدم ملفاً بترتيب مجلداته */
+export const deleteArchiveFolder = createAction(
+  folderIdSchema,
+  ({ id }, userId) => deleteFolder(userId, id)
+)
+
+export const moveArchiveFiles = createAction(
+  moveFilesSchema,
+  ({ ids, folderId }, userId) => moveFiles(userId, ids, folderId)
 )

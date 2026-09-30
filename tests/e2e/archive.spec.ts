@@ -63,7 +63,7 @@ test.describe("الأرشيف", () => {
     expect((await response.body()).toString()).toContain("%PDF-1.4")
 
     // الحذف
-    await card.getByRole("button", { name: title }).click()
+    await card.getByRole("button", { name: `خيارات ${title}` }).click()
     await page.getByRole("menuitem", { name: "حذف" }).click()
     await page.getByRole("button", { name: "حذف" }).last().click()
     await expect(page.getByText("حُذف الملف")).toBeVisible()
@@ -75,7 +75,7 @@ test.describe("الأرشيف", () => {
     await upload(page, title)
 
     const card = page.locator("li").filter({ hasText: title })
-    await card.getByRole("button", { name: title }).click()
+    await card.getByRole("button", { name: `خيارات ${title}` }).click()
     await page.getByRole("menuitem", { name: "تعديل" }).click()
 
     const dialog = page.getByRole("dialog")
@@ -157,5 +157,215 @@ test.describe("أمان الأرشيف", () => {
       "/api/archive/clxxxxxxxxxxxxxxxxxxxxxxx"
     )
     expect(response.status()).toBe(404)
+  })
+})
+
+// ------------------------------------------------------------------ الصيغ
+
+test.describe("صيغ الملفات", () => {
+  /** المتصفح يعطي `.py` نوعاً فارغاً — النوع يُحسم بالامتداد لا به */
+  async function uploadRaw(
+    page: import("@playwright/test").Page,
+    name: string,
+    body: string
+  ) {
+    await page.goto("/ar/archive")
+    await page.getByRole("button", { name: "رفع ملف" }).first().click()
+
+    const dialog = page.getByRole("dialog")
+    await dialog.locator("#archive-file").setInputFiles({
+      name,
+      mimeType: "",
+      buffer: Buffer.from(body),
+    })
+    await dialog.getByRole("button", { name: "رفع ملف" }).click()
+    await expect(page.getByText("رُفع الملف")).toBeVisible()
+  }
+
+  test("ملف بايثون يُعرض نصّاً لا يُنزَّل قسراً", async ({ page, context }) => {
+    const title = `أرشيف بايثون ${Date.now()}`
+    await uploadRaw(page, `${title}.py`, "print('مرحبا')\n")
+
+    const href = await page
+      .locator("li")
+      .filter({ hasText: title })
+      .getByRole("link")
+      .first()
+      .getAttribute("href")
+
+    const response = await context.request.get(href!)
+    // لولا الكشف بالامتداد لكان octet-stream فيُنزَّل بدل أن يُعرض
+    expect(response.headers()["content-type"]).toContain("text/plain")
+    expect((await response.body()).toString()).toContain("مرحبا")
+  })
+
+  test("التنزيل يحمل الاسم الأصلي بامتداده", async ({ page, context }) => {
+    const title = `أرشيف امتداد ${Date.now()}`
+    await uploadRaw(page, `${title}.py`, "x = 1\n")
+
+    const href = await page
+      .locator("li")
+      .filter({ hasText: title })
+      .getByRole("link")
+      .first()
+      .getAttribute("href")
+
+    const response = await context.request.get(href!)
+    // العنوان يُزال منه الامتداد، فلولا حفظ الاسم لنزل الملف بلا امتداد
+    expect(response.headers()["content-disposition"]).toContain(
+      encodeURIComponent(`${title}.py`)
+    )
+  })
+
+  test("HTML يُقدَّم نصّاً لا صفحةً — منع XSS مخزّن", async ({
+    page,
+    context,
+  }) => {
+    const title = `أرشيف صفحة ${Date.now()}`
+    await uploadRaw(page, `${title}.html`, "<script>alert(1)</script>")
+
+    const href = await page
+      .locator("li")
+      .filter({ hasText: title })
+      .getByRole("link")
+      .first()
+      .getAttribute("href")
+
+    const response = await context.request.get(href!)
+    // تقديمه text/html يعني تنفيذ سكربت المستخدم داخل أصل الموقع
+    expect(response.headers()["content-type"]).toContain("text/plain")
+    expect(response.headers()["content-type"]).not.toContain("text/html")
+  })
+})
+
+// ------------------------------------------------------------------ المجلدات
+
+test.describe("المجلدات", () => {
+  async function newFolder(page: import("@playwright/test").Page, name: string) {
+    await page.getByRole("button", { name: "مجلد جديد" }).click()
+    const dialog = page.getByRole("dialog")
+    await dialog.locator("#folder-name").fill(name)
+    await dialog.getByRole("button", { name: "إنشاء" }).click()
+    await expect(page.getByText("أُنشئ المجلد")).toBeVisible()
+  }
+
+  test("إنشاء مجلد ثم الدخول إليه والرفع بداخله", async ({ page }) => {
+    const folder = `مجلد ${Date.now()}`
+    const title = `أرشيف داخل ${Date.now()}`
+
+    await page.goto("/ar/archive")
+    await newFolder(page, folder)
+
+    // الدخول
+    await page.getByRole("button", { name: folder, exact: true }).click()
+    await expect(
+      page.getByRole("navigation", { name: "مسار المجلدات" })
+    ).toContainText(folder)
+
+    // الرفع يقع داخل المجلد المعروض
+    await page.getByRole("button", { name: "رفع ملف" }).first().click()
+    const dialog = page.getByRole("dialog")
+    await dialog.locator("#archive-file").setInputFiles({
+      name: `${title}.pdf`,
+      mimeType: "application/pdf",
+      buffer: Buffer.from("%PDF-1.4\n%%EOF"),
+    })
+    await dialog.getByRole("button", { name: "رفع ملف" }).click()
+    await expect(page.getByText("رُفع الملف")).toBeVisible()
+    await expect(page.locator("li").filter({ hasText: title })).toBeVisible()
+
+    // وفي الجذر لا يظهر
+    await page.getByRole("button", { name: "الأرشيف", exact: true }).click()
+    await expect(page.locator("li").filter({ hasText: title })).toHaveCount(0)
+  })
+
+  test("البحث يتجاوز المجلدات", async ({ page }) => {
+    const folder = `مجلد بحث ${Date.now()}`
+    const title = `أرشيف مخفي ${Date.now()}`
+
+    await page.goto("/ar/archive")
+    await newFolder(page, folder)
+    await page.getByRole("button", { name: folder, exact: true }).click()
+
+    const dialog = page.getByRole("dialog")
+    await page.getByRole("button", { name: "رفع ملف" }).first().click()
+    await dialog.locator("#archive-file").setInputFiles({
+      name: `${title}.pdf`,
+      mimeType: "application/pdf",
+      buffer: Buffer.from("%PDF-1.4\n%%EOF"),
+    })
+    await dialog.getByRole("button", { name: "رفع ملف" }).click()
+    await expect(page.getByText("رُفع الملف")).toBeVisible()
+
+    // من الجذر: التصفّح لا يُظهره، لكن البحث يجده
+    await page.getByRole("button", { name: "الأرشيف", exact: true }).click()
+    await expect(page.locator("li").filter({ hasText: title })).toHaveCount(0)
+
+    await page.getByPlaceholder("ابحث في العناوين").fill(title)
+    await expect(page.locator("li").filter({ hasText: title })).toBeVisible()
+    await expect(page.getByText("البحث يشمل كل المجلدات")).toBeVisible()
+  })
+
+  test("حذف المجلد يرفع محتواه للأب ولا يحذف ملفاً", async ({ page }) => {
+    const folder = `مجلد يُحذف ${Date.now()}`
+    const title = `أرشيف ناجٍ ${Date.now()}`
+
+    await page.goto("/ar/archive")
+    await newFolder(page, folder)
+    await page.getByRole("button", { name: folder, exact: true }).click()
+
+    await page.getByRole("button", { name: "رفع ملف" }).first().click()
+    const dialog = page.getByRole("dialog")
+    await dialog.locator("#archive-file").setInputFiles({
+      name: `${title}.pdf`,
+      mimeType: "application/pdf",
+      buffer: Buffer.from("%PDF-1.4\n%%EOF"),
+    })
+    await dialog.getByRole("button", { name: "رفع ملف" }).click()
+    await expect(page.getByText("رُفع الملف")).toBeVisible()
+
+    // حذف المجلد من الجذر
+    await page.getByRole("button", { name: "الأرشيف", exact: true }).click()
+    await page
+      .getByRole("button", { name: `خيارات مجلد ${folder}` })
+      .click()
+    await page.getByRole("menuitem", { name: "حذف" }).click()
+    await page.getByRole("button", { name: "حذف" }).last().click()
+    await expect(page.getByText("حُذف المجلد")).toBeVisible()
+
+    // الملف نجا وصعد للجذر
+    await expect(page.locator("li").filter({ hasText: title })).toBeVisible()
+  })
+
+  test("نقل ملف بين المجلدات", async ({ page }) => {
+    const folder = `مجلد وجهة ${Date.now()}`
+    const title = `أرشيف منقول ${Date.now()}`
+
+    await page.goto("/ar/archive")
+    await newFolder(page, folder)
+
+    await page.getByRole("button", { name: "رفع ملف" }).first().click()
+    const dialog = page.getByRole("dialog")
+    await dialog.locator("#archive-file").setInputFiles({
+      name: `${title}.pdf`,
+      mimeType: "application/pdf",
+      buffer: Buffer.from("%PDF-1.4\n%%EOF"),
+    })
+    await dialog.getByRole("button", { name: "رفع ملف" }).click()
+    await expect(page.getByText("رُفع الملف")).toBeVisible()
+
+    await page
+      .locator("li")
+      .filter({ hasText: title })
+      .getByRole("button", { name: `خيارات ${title}` })
+      .click()
+    await page.getByRole("menuitem", { name: "نقل إلى" }).click()
+    await page.getByRole("dialog").getByRole("button", { name: folder }).click()
+    await expect(page.getByText("نُقل الملف")).toBeVisible()
+
+    // خرج من الجذر ودخل المجلد
+    await expect(page.locator("li").filter({ hasText: title })).toHaveCount(0)
+    await page.getByRole("button", { name: folder, exact: true }).click()
+    await expect(page.locator("li").filter({ hasText: title })).toBeVisible()
   })
 })

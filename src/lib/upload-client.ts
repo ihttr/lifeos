@@ -1,5 +1,6 @@
 import { upload } from "@vercel/blob/client"
 
+import { detectFileType } from "@/lib/file-types"
 import { MAX_FILE_BYTES } from "@/schemas/archive"
 import { registerArchiveFile } from "@/server/actions/archive"
 
@@ -19,7 +20,8 @@ import type { ArchiveMetaInput } from "@/schemas/archive"
 
 export type UploadResult =
   | { ok: true; id: string }
-  | { ok: false; error: string }
+  /** detail نصّ الخطأ الأصلي — يُعرض للمستخدم لأنه وحده يفيد التشخيص */
+  | { ok: false; error: string; detail?: string }
 
 export async function uploadArchiveFile(
   file: File,
@@ -32,12 +34,14 @@ export async function uploadArchiveFile(
   if (!directUpload) {
     const form = new FormData()
     form.set("file", file)
-    form.set("title", meta.title)
-    if (meta.description) form.set("description", meta.description)
-    if (meta.kind) form.set("kind", meta.kind)
-    if (meta.subjectId) form.set("subjectId", meta.subjectId)
-    if (meta.assignmentId) form.set("assignmentId", meta.assignmentId)
-    if (meta.projectId) form.set("projectId", meta.projectId)
+
+    // نمرّ على الحقول بدل تعدادها يدوياً: كل حقل يُضاف لاحقاً كان
+    // سيُنسى هنا ويُفقد بصمت — وهو ما حدث فعلاً مع folderId.
+    for (const [key, value] of Object.entries(meta)) {
+      if (value !== undefined && value !== null && value !== "") {
+        form.set(key, String(value))
+      }
+    }
 
     const response = await fetch("/api/archive/upload", {
       method: "POST",
@@ -51,26 +55,36 @@ export async function uploadArchiveFile(
     return json.ok ? { ok: true, id: json.data.id } : json
   }
 
+  // الرفع المباشر لا يمرّ بالخادم، فنحسم النوع هنا بنفس الدالة
+  const { contentType } = detectFileType(file.name, file.type)
+
   try {
     const blob = await upload(file.name, file, {
       access: "private",
       handleUploadUrl: "/api/archive/blob-upload",
-      contentType: file.type || "application/octet-stream",
+      contentType,
     })
 
     const result = await registerArchiveFile({
       ...meta,
       source: "WEB",
       pathname: blob.pathname,
+      filename: file.name,
       size: file.size,
-      contentType: file.type || "application/octet-stream",
+      contentType,
     })
 
     return result.ok
       ? { ok: true, id: result.data.id }
       : { ok: false, error: result.error }
   } catch (error) {
+    // نص الخطأ من Blob مفيد جداً في التشخيص (متجر عام، رمز منتهٍ، حجم).
+    // ابتلاعه يترك المستخدم أمام رسالة عامة لا تدلّ على شيء.
     console.error("archive: فشل الرفع المباشر", error)
-    return { ok: false, error: "errors.generic" }
+    return {
+      ok: false,
+      error: "archive.uploadFailed",
+      detail: error instanceof Error ? error.message : String(error),
+    }
   }
 }

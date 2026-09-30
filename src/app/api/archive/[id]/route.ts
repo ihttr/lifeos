@@ -41,7 +41,8 @@ export async function GET(
     })
   }
 
-  const filename = encodeURIComponent(record.title)
+  // الاسم الأصلي بامتداده: حفظُ ملفٍ بلا امتداد يجعله غير قابل للفتح
+  const filename = encodeURIComponent(record.filename || record.title)
 
   return new Response(file.stream, {
     headers: {

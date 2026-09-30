@@ -56,12 +56,15 @@ export function ArchiveUploadDialog({
   onOpenChange,
   file,
   options,
+  folderId,
   directUpload,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   file: ArchiveFileDTO | null
   options: ArchiveOptions
+  /** المجلد المعروض — الملف الجديد يُرفع بداخله */
+  folderId: string | null
   directUpload: boolean
 }) {
   const t = useTranslations("archive")
@@ -116,6 +119,8 @@ export function ArchiveUploadDialog({
       subjectId,
       projectId,
       assignmentId: file?.assignment?.id,
+      // التحرير يبقي الملف مكانه، والرفع يضعه في المجلد المعروض
+      folderId: (editing ? file.folderId : folderId) ?? undefined,
     } satisfies ArchiveMetaInput
 
     if (!meta.title) {
@@ -152,9 +157,15 @@ export function ArchiveUploadDialog({
       return
     }
 
-    toast.error(
-      result.error.startsWith("archive.") ? t(result.error.slice(8)) : tc("error")
-    )
+    // كل مسارات الفشل تنتهي برسالة مقروءة: مفتاح داخل archive إن عُرف،
+    // وإلا الرسالة العامة — ولا يُعرض مفتاح ترجمة خام للمستخدم أبداً.
+    const key = result.error.startsWith("archive.")
+      ? result.error.slice("archive.".length)
+      : null
+
+    toast.error(key && t.has(key) ? t(key) : t("uploadFailed"), {
+      description: result.detail,
+    })
   }
 
   const busy = pending || uploading

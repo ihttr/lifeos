@@ -610,6 +610,24 @@
     "deleteDescription": "سيُحذف الملف نهائياً من المخزن. لا يمكن التراجع.",
     "tooLarge": "الملف أكبر من الحد ({max}).",
     "emptyFile": "الملف فارغ.",
-    "storageUnavailable": "التخزين غير مهيّأ."
+    "storageUnavailable": "التخزين غير مهيّأ.",
+    "newFolder": "مجلد جديد",
+    "renameFolder": "إعادة تسمية المجلد",
+    "folderName": "اسم المجلد",
+    "folderPlaceholder": "مثال: الفصل الأول · مشاريع · معامل",
+    "rename": "إعادة تسمية",
+    "root": "الأرشيف",
+    "breadcrumb": "مسار المجلدات",
+    "searchingAll": "البحث يشمل كل المجلدات",
+    "moveTo": "نقل إلى",
+    "moved": "نُقل الملف",
+    "folderCreated": "أُنشئ المجلد",
+    "folderRenamed": "أُعيدت التسمية",
+    "folderDeleted": "حُذف المجلد",
+    "deleteFolderTitle": "حذف المجلد؟",
+    "deleteFolderDescription": "ما بداخله ينتقل للمجلد الأب — لا يُحذف أي ملف.",
+    "uploadFailed": "تعذّر رفع الملف.",
+    "fileActions": "خيارات {name}",
+    "folderActions": "خيارات مجلد {name}"
   }
 }

@@ -610,6 +610,24 @@
     "deleteDescription": "The file will be permanently removed from storage. This cannot be undone.",
     "tooLarge": "File is larger than the limit ({max}).",
     "emptyFile": "The file is empty.",
-    "storageUnavailable": "Storage is not configured."
+    "storageUnavailable": "Storage is not configured.",
+    "newFolder": "New folder",
+    "renameFolder": "Rename folder",
+    "folderName": "Folder name",
+    "folderPlaceholder": "e.g. Semester 1 · Projects · Labs",
+    "rename": "Rename",
+    "root": "Archive",
+    "breadcrumb": "Folder path",
+    "searchingAll": "Search covers every folder",
+    "moveTo": "Move to",
+    "moved": "File moved",
+    "folderCreated": "Folder created",
+    "folderRenamed": "Folder renamed",
+    "folderDeleted": "Folder deleted",
+    "deleteFolderTitle": "Delete this folder?",
+    "deleteFolderDescription": "Its contents move to the parent folder — no file is deleted.",
+    "uploadFailed": "Could not upload the file.",
+    "fileActions": "{name} options",
+    "folderActions": "Folder {name} options"
   }
 }

@@ -126,6 +126,7 @@ model User {
   notificationReads NotificationRead[]
   telegramSent      TelegramSent[]
   archiveFiles      ArchiveFile[]
+  archiveFolders    ArchiveFolder[]
 }
 
 // ============================= Tasks =============================
@@ -563,6 +564,11 @@ model ArchiveFile {
   /// المسار داخل المخزن لا الرابط — الملفات الخاصة تُقرأ بالمسار،
   /// ولا رابط عاماً لها أصلاً.
   pathname    String  @unique
+  /// اسم الملف كما رُفع، بامتداده.
+  ///
+  /// يُحفظ ولا يُشتقّ من العنوان: العنوان يحرّره المستخدم ويُزال منه
+  /// الامتداد، فلا يصلح لتحديد نوع الملف ولا لتسميته عند التنزيل.
+  filename    String  @default("")
   /// بالبايت
   size        Int
   contentType String
@@ -573,6 +579,8 @@ model ArchiveFile {
   subjectId    String?
   assignmentId String?
   projectId    String?
+  /// المجلد الحاوي. null = الجذر.
+  folderId     String?
 
   isDemo    Boolean  @default(false)
   createdAt DateTime @default(now())
@@ -581,11 +589,38 @@ model ArchiveFile {
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   subject    Subject?    @relation(fields: [subjectId], references: [id], onDelete: SetNull)
   assignment Assignment? @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
-  project    Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  project    Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  folder     ArchiveFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
+  @@index([userId, folderId])
   @@index([userId, createdAt])
   @@index([userId, subjectId])
   @@index([userId, kind])
   @@index([assignmentId])
   @@index([projectId])
+}
+
+/// مجلدات الأرشيف — شجرة بعمق حر.
+///
+/// التداخل بمرجع ذاتي لا بمسار نصّي: إعادة تسمية مجلد أعلى لا تُجبرنا
+/// على تحديث كل ما تحته، والنقل يغيّر حقلاً واحداً.
+///
+/// حذف المجلد يرفع ما بداخله إلى أبيه (SetNull على الملفات، Cascade
+/// ممنوع هنا) — لا يفقد المستخدم ملفاً لأنه رتّب مجلداته.
+model ArchiveFolder {
+  id       String  @id @default(cuid())
+  userId   String
+  name     String
+  parentId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent   ArchiveFolder?  @relation("FolderTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children ArchiveFolder[] @relation("FolderTree")
+  files    ArchiveFile[]
+
+  @@unique([userId, parentId, name])
+  @@index([userId, parentId])
 }

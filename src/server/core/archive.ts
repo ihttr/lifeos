@@ -1,6 +1,7 @@
 import "server-only"
 
 import { db } from "@/lib/db"
+import { detectFileType } from "@/lib/file-types"
 import { buildPathname, deleteFile, putFile } from "@/lib/storage"
 import { archiveMetaSchema, MAX_FILE_BYTES } from "@/schemas/archive"
 import { PATHS, revalidate } from "@/server/revalidate"
@@ -46,6 +47,13 @@ async function assertOwnedLinks(input: ArchiveMeta, userId: string) {
     })
     if (count === 0) throw new Error("project not owned")
   }
+
+  if (input.folderId) {
+    const count = await db.archiveFolder.count({
+      where: { id: input.folderId, userId },
+    })
+    if (count === 0) throw new Error("folder not owned")
+  }
 }
 
 /** يسجّل ملفاً رُفع للمخزن مسبقاً */
@@ -63,11 +71,13 @@ export async function createArchiveEntry(
       kind: input.kind,
       source: input.source,
       pathname: input.pathname,
+      filename: input.filename,
       size: input.size,
       contentType: input.contentType,
       subjectId: input.subjectId,
       assignmentId: input.assignmentId,
       projectId: input.projectId,
+      folderId: input.folderId,
     },
     select: { id: true, title: true },
   })
@@ -105,13 +115,18 @@ export async function uploadArchiveFile(
   const parsed = archiveMetaSchema.parse(meta)
   await assertOwnedLinks(parsed, userId)
 
+  // النوع يُحسم بالامتداد لا بما قاله المتصفح: ملف .py يصل بنوع فارغ
+  // فيُنزَّل قسراً بدل أن يُعرض. وhtml/svg يُقدَّمان نصّاً عمداً.
+  const { contentType: resolved } = detectFileType(filename, contentType)
+
   const pathname = buildPathname(userId, filename)
-  const stored = await putFile(pathname, body, contentType)
+  const stored = await putFile(pathname, body, resolved)
 
   try {
     return await createArchiveEntry(userId, {
       ...parsed,
       source,
+      filename,
       pathname: stored.pathname,
       size: stored.size,
       contentType: stored.contentType,
@@ -170,6 +185,7 @@ export async function updateArchiveEntry(
       subjectId: input.subjectId ?? null,
       assignmentId: input.assignmentId ?? null,
       projectId: input.projectId ?? null,
+      folderId: input.folderId ?? null,
     },
   })
   if (count === 0) throw new Error("not found")
@@ -193,4 +209,128 @@ export async function deleteArchiveEntry(userId: string, id: string) {
 
   revalidateArchive()
   return { id: file.id }
+}
+
+// ------------------------------------------------------------------ المجلدات
+
+/** يمنع جعل مجلد ابناً لنفسه أو لأحد أحفاده — حلقةٌ تُخفي فرعاً كاملاً */
+async function assertNoCycle(userId: string, id: string, parentId: string) {
+  let cursor: string | null = parentId
+
+  // العمق محدود عملياً، لكن الحدّ يمنع دوراناً أبدياً لو فسدت البيانات
+  for (let depth = 0; cursor && depth < 64; depth += 1) {
+    if (cursor === id) throw new Error("folder cycle")
+
+    const parent: { parentId: string | null } | null =
+      await db.archiveFolder.findFirst({
+        where: { id: cursor, userId },
+        select: { parentId: true },
+      })
+
+    cursor = parent?.parentId ?? null
+  }
+}
+
+export async function createFolder(
+  userId: string,
+  input: { name: string; parentId?: string | null }
+) {
+  if (input.parentId) {
+    const count = await db.archiveFolder.count({
+      where: { id: input.parentId, userId },
+    })
+    if (count === 0) throw new Error("folder not owned")
+  }
+
+  const folder = await db.archiveFolder.create({
+    data: { userId, name: input.name, parentId: input.parentId ?? null },
+    select: { id: true, name: true },
+  })
+
+  revalidateArchive()
+  return folder
+}
+
+export async function renameFolder(userId: string, id: string, name: string) {
+  const { count } = await db.archiveFolder.updateMany({
+    where: { id, userId },
+    data: { name },
+  })
+  if (count === 0) throw new Error("not found")
+
+  revalidateArchive()
+  return { id }
+}
+
+export async function moveFolder(
+  userId: string,
+  id: string,
+  parentId: string | null
+) {
+  if (parentId) {
+    const count = await db.archiveFolder.count({
+      where: { id: parentId, userId },
+    })
+    if (count === 0) throw new Error("folder not owned")
+    await assertNoCycle(userId, id, parentId)
+  }
+
+  const { count } = await db.archiveFolder.updateMany({
+    where: { id, userId },
+    data: { parentId },
+  })
+  if (count === 0) throw new Error("not found")
+
+  revalidateArchive()
+  return { id }
+}
+
+/**
+ * يحذف المجلد ويرفع محتواه إلى أبيه.
+ *
+ * لا حذف متتالٍ بحال: المستخدم يرتّب مجلداته، ولا يصحّ أن يفقد ملفاً
+ * لأنه أزال حاوياً. الملفات أثمن من التنظيم.
+ */
+export async function deleteFolder(userId: string, id: string) {
+  const folder = await db.archiveFolder.findFirst({
+    where: { id, userId },
+    select: { id: true, parentId: true },
+  })
+  if (!folder) throw new Error("not found")
+
+  await db.$transaction([
+    db.archiveFile.updateMany({
+      where: { userId, folderId: folder.id },
+      data: { folderId: folder.parentId },
+    }),
+    db.archiveFolder.updateMany({
+      where: { userId, parentId: folder.id },
+      data: { parentId: folder.parentId },
+    }),
+    db.archiveFolder.delete({ where: { id: folder.id } }),
+  ])
+
+  revalidateArchive()
+  return { id: folder.id }
+}
+
+export async function moveFiles(
+  userId: string,
+  ids: string[],
+  folderId: string | null
+) {
+  if (folderId) {
+    const count = await db.archiveFolder.count({
+      where: { id: folderId, userId },
+    })
+    if (count === 0) throw new Error("folder not owned")
+  }
+
+  const { count } = await db.archiveFile.updateMany({
+    where: { id: { in: ids }, userId },
+    data: { folderId },
+  })
+
+  revalidateArchive()
+  return { count }
 }
