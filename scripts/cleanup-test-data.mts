@@ -24,10 +24,41 @@ const PREFIXES = [
   "مادة اختبار ",
   "واجب اختبار ",
   "بوت ", // ما ينشئه اختبار تيليجرام عبر الـ webhook
+  "أرشيف ", // ما ينشئه اختبار الأرشيف
 ]
 
 /** الحركات المالية تستخدم تصنيفاً عشوائياً بهذه البادئة */
 const TRANSACTION_PREFIX = "تصنيف"
+
+/**
+ * الأرشيف أولاً وبمفرده: حذف السجل لا يحذف الملف من القرص، فنقرأ
+ * المسارات ثم نحذفها يدوياً — وإلا تراكمت ملفات يتيمة لا يشير إليها شيء.
+ */
+const staleFiles = await db.archiveFile.findMany({
+  where: {
+    isDemo: false,
+    OR: PREFIXES.map((p) => ({ title: { startsWith: p } })),
+  },
+  select: { id: true, pathname: true },
+})
+
+if (staleFiles.length > 0) {
+  const { rm } = await import("node:fs/promises")
+  const { resolve, sep } = await import("node:path")
+  const root = resolve(process.cwd(), ".storage")
+
+  for (const file of staleFiles) {
+    const full = resolve(root, file.pathname)
+    // لا نخرج من جذر التخزين مهما كان المسار المخزّن
+    if (!full.startsWith(root + sep)) continue
+    await rm(full, { force: true })
+    await rm(`${full}.meta`, { force: true })
+  }
+
+  await db.archiveFile.deleteMany({
+    where: { id: { in: staleFiles.map((f) => f.id) } },
+  })
+}
 
 const [
   tasks,
@@ -74,7 +105,7 @@ const [
 ])
 
 console.log(
-  `حُذف: ${tasks.count} مهمة، ${projects.count} مشروع، ${notes.count} ملاحظة، ` +
+  `حُذف: ${staleFiles.length} ملف أرشيف، ${tasks.count} مهمة، ${projects.count} مشروع، ${notes.count} ملاحظة، ` +
     `${goals.count} هدف، ${assignments.count} واجب، ${exams.count} اختبار، ` +
     `${subjects.count} مادة، ${transactions.count} حركة`
 )

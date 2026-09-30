@@ -132,6 +132,63 @@ export function editMessage({
 }
 
 /**
+ * حدّ تنزيل البوت: 20 ميبي بايت بالضبط، لا يتجاوزه الـ API العام.
+ * نفحصه قبل النداء لنعطي رسالة مفهومة بدل خطأ غامض من تيليجرام.
+ */
+export const TELEGRAM_MAX_DOWNLOAD = 20 * 1024 * 1024
+
+/**
+ * ينزّل ملفاً وصل للبوت.
+ *
+ * نداءان: getFile يعطي مساراً مؤقتاً، ثم نحمّل من نطاق الملفات لا من
+ * نطاق الـ API. يعيد null عند أي فشل — المستدعي يخبر المستخدم.
+ */
+export async function downloadFile(
+  fileId: string
+): Promise<{ body: Buffer; path: string } | null> {
+  const token = process.env.TELEGRAM_BOT_TOKEN
+  if (!token) return null
+
+  try {
+    const info = await fetch(`${API}/bot${token}/getFile`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file_id: fileId }),
+      signal: AbortSignal.timeout(15_000),
+    })
+
+    if (!info.ok) {
+      console.error("telegram: getFile فشل", await info.text())
+      return null
+    }
+
+    const json = (await info.json()) as {
+      ok: boolean
+      result?: { file_path?: string }
+    }
+
+    const path = json.result?.file_path
+    if (!path) return null
+
+    // نطاق الملفات يختلف عن نطاق الـ API — /file/bot<token>/<path>
+    const base = API.replace(/\/$/, "")
+    const download = await fetch(`${base}/file/bot${token}/${path}`, {
+      signal: AbortSignal.timeout(60_000),
+    })
+
+    if (!download.ok) {
+      console.error("telegram: تنزيل الملف فشل", download.status)
+      return null
+    }
+
+    return { body: Buffer.from(await download.arrayBuffer()), path }
+  } catch (error) {
+    console.error("telegram: تنزيل الملف فشل", error)
+    return null
+  }
+}
+
+/**
  * تيليجرام يُظهر دائرة تحميل على الزر حتى يوصل هذا الرد.
  * إغفاله يجعل الزر يبدو معلّقاً، فنستدعيه دائماً ولو بلا نص.
  */
@@ -152,10 +209,23 @@ export type InlineKeyboardMarkup = {
   inline_keyboard: { text: string; callback_data?: string }[][]
 }
 
+/** ملف مرفق — مستند أو صورة أو صوت، كلها بنفس الشكل تقريباً */
+export type TelegramDocument = {
+  file_id: string
+  file_name?: string
+  mime_type?: string
+  file_size?: number
+}
+
 export type TelegramMessage = {
   message_id: number
   chat: { id: number }
   text?: string
+  /** التعليق المرفق بالملف — نستخدمه عنواناً */
+  caption?: string
+  document?: TelegramDocument
+  /** الصور تصل بمقاسات متعددة، آخرها الأكبر */
+  photo?: TelegramDocument[]
   reply_markup?: InlineKeyboardMarkup
 }
 

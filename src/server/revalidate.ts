@@ -24,6 +24,7 @@ export const PATHS = {
   bookmarks: "/bookmarks",
   calendar: "/calendar",
   stats: "/stats",
+  archive: "/archive",
   settings: "/settings",
 } as const
 

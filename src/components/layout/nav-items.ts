@@ -1,4 +1,5 @@
 import {
+  ArchiveIcon,
   BarChart3Icon,
   BookOpenIcon,
   BookmarkIcon,
@@ -42,6 +43,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/university", labelKey: "nav.university", Icon: GraduationCapIcon },
       { href: "/learning", labelKey: "nav.learning", Icon: BookOpenIcon },
       { href: "/notes", labelKey: "nav.notes", Icon: NotebookPenIcon },
+      { href: "/archive", labelKey: "nav.archive", Icon: ArchiveIcon },
     ],
   },
   {

@@ -1,6 +1,7 @@
 import { isTelegramConfigured } from "@/lib/telegram"
 import {
   handleCallback,
+  handleDocument,
   handleMessage,
   resolveUser,
 } from "@/server/telegram/handle"
@@ -66,6 +67,9 @@ export async function POST(request: Request) {
 
     if (update.callback_query) {
       await handleCallback(user.id, update.callback_query)
+    } else if (update.message?.document || update.message?.photo) {
+      // الملف قبل النص: الملف المرفق بتعليق يحمل الاثنين، والمقصود أرشفته
+      await handleDocument(user.id, chatId, update.message)
     } else if (update.message?.text) {
       await handleMessage(user.id, chatId, update.message.text)
     }

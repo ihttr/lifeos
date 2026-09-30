@@ -21,6 +21,9 @@ const isLocalMock = /^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(API_BASE)
 
 type Call = { method: string; body: Record<string, unknown> }
 
+/** ما يعيده الخادم الوهمي حين ينزّل البوت ملفاً */
+const BOT_PDF = Buffer.from("%PDF-1.4\n% ملف من البوت\n%%EOF")
+
 let server: Server
 let calls: Call[] = []
 let nextMessageId = 1000
@@ -34,10 +37,19 @@ test.beforeAll(async () => {
   const port = Number(new URL(API_BASE).port)
 
   server = createServer((request, response) => {
+    const url = request.url ?? ""
+
+    // نطاق تنزيل الملفات يختلف عن نطاق الـ API: /file/bot<token>/<path>
+    if (url.startsWith("/file/bot")) {
+      response.writeHead(200, { "Content-Type": "application/pdf" })
+      response.end(BOT_PDF)
+      return
+    }
+
     const chunks: Buffer[] = []
     request.on("data", (chunk: Buffer) => chunks.push(chunk))
     request.on("end", () => {
-      const method = (request.url ?? "").split("/").pop() ?? ""
+      const method = url.split("/").pop() ?? ""
       const body = JSON.parse(Buffer.concat(chunks).toString() || "{}")
       calls.push({ method, body })
 
@@ -45,7 +57,10 @@ test.beforeAll(async () => {
       response.end(
         JSON.stringify({
           ok: true,
-          result: { message_id: nextMessageId++, date: 0, chat: { id: CHAT_ID } },
+          result:
+            method === "getFile"
+              ? { file_id: body.file_id, file_path: "documents/bot-file.pdf" }
+              : { message_id: nextMessageId++, date: 0, chat: { id: CHAT_ID } },
         })
       )
     })
@@ -408,5 +423,106 @@ test.describe("الإنجاز بالجملة", () => {
 
     await page.goto("/ar/university?tab=assignments")
     await expect(page.getByText(title)).toBeVisible()
+  })
+})
+
+// ------------------------------------------------------------------ الأرشيف
+
+test.describe("أرشفة الملفات من البوت", () => {
+  /** مستند كما يرسله تيليجرام */
+  function document(name: string, extra: Record<string, unknown> = {}) {
+    return {
+      message: {
+        message_id: 1,
+        chat: { id: CHAT_ID },
+        document: {
+          file_id: "FILE-1",
+          file_name: name,
+          mime_type: "application/pdf",
+          file_size: BOT_PDF.length,
+          ...extra,
+        },
+      },
+    }
+  }
+
+  test("ملف مرسَل يُؤرشف ويُعرض عليه ربطه بمادة", async ({ request, page }) => {
+    const name = `أرشيف بوت ${Date.now()}.pdf`
+    await send(request, document(name))
+
+    const { text, keyboard } = lastSend()
+    expect(text).toContain("📎 أُرشف")
+    expect(text).toContain(name.replace(".pdf", ""))
+    expect(text).toContain("اربطه بمادة؟")
+    // زر لكل مادة في الفصل النشط
+    expect(keyboard?.flat().some((b) => b.text === "الشبكات")).toBe(true)
+
+    // والملف وصل الأرشيف فعلاً بمحتواه
+    await page.goto("/ar/archive")
+    const card = page.locator("li").filter({ hasText: name.replace(".pdf", "") })
+    await expect(card).toBeVisible()
+
+    const href = await card.getByRole("link").first().getAttribute("href")
+    const file = await page.request.get(href!)
+    expect((await file.body()).toString()).toContain("ملف من البوت")
+  })
+
+  test("التعليق المرفق يصير عنواناً", async ({ request }) => {
+    const caption = `عنوان من التعليق ${Date.now()}`
+    await send(request, {
+      message: {
+        message_id: 1,
+        chat: { id: CHAT_ID },
+        caption,
+        document: {
+          file_id: "FILE-2",
+          file_name: "ignored.pdf",
+          mime_type: "application/pdf",
+          file_size: BOT_PDF.length,
+        },
+      },
+    })
+
+    expect(lastSend().text).toContain(caption)
+  })
+
+  test("زر المادة يربط الملف ويحدّث الرسالة", async ({ request, page }) => {
+    const name = `أرشيف ربط ${Date.now()}.pdf`
+    await send(request, document(name))
+
+    const button = lastSend().keyboard?.flat().find((b) => b.text === "الشبكات")
+    expect(button?.callback_data).toMatch(/^as:/)
+
+    calls = []
+    await send(request, {
+      callback_query: {
+        id: "cb-archive",
+        data: button!.callback_data,
+        message: { message_id: 900, chat: { id: CHAT_ID }, text: "📎 أُرشف: x" },
+      },
+    })
+
+    const answer = calls.find((c) => c.method === "answerCallbackQuery")
+    expect(String(answer?.body.text)).toContain("الشبكات")
+
+    const edit = calls.find((c) => c.method === "editMessageText")
+    expect(String(edit?.body.text)).toContain("📚 الشبكات")
+
+    await page.goto("/ar/archive")
+    await expect(
+      page.locator("li").filter({ hasText: name.replace(".pdf", "") })
+    ).toContainText("الشبكات")
+  })
+
+  test("ملف فوق حدّ تيليجرام يُرفض برسالة مفهومة", async ({ request }) => {
+    await send(
+      request,
+      document("ضخم.pdf", { file_size: 25 * 1024 * 1024 })
+    )
+
+    const { text } = lastSend()
+    expect(text).toContain("أكبر من")
+    // يقترح البديل بدل أن يقف عند الرفض
+    expect(text).toContain("من الموقع")
   })
 })

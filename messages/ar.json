@@ -20,7 +20,8 @@
     "more": "المزيد",
     "groupMain": "الأساسي",
     "groupStudy": "الدراسة",
-    "groupLife": "الحياة"
+    "groupLife": "الحياة",
+    "archive": "الأرشيف"
   },
   "common": {
     "add": "إضافة",
@@ -568,5 +569,47 @@
     "learning": "التعلّم",
     "learningDesc": "المسارات النشطة والدرس التالي في كل منها",
     "nextLesson": "التالي: {title}"
+  },
+  "archive": {
+    "title": "الأرشيف",
+    "description": "ملفات أعمالك المنجزة — مرجعٌ تعود إليه",
+    "summary": "{count, plural, zero{لا ملفات} one{ملف واحد} two{ملفان} few{# ملفات} many{# ملفاً} other{# ملف}} · {size}",
+    "upload": "رفع ملف",
+    "uploadTitle": "رفع ملف للأرشيف",
+    "uploadDescription": "ملف الواجب بعد حلّه، تقرير المعمل، أو أي عمل تريد الرجوع إليه.",
+    "editTitle": "تعديل بيانات الملف",
+    "file": "الملف",
+    "pickFile": "اختر ملفاً",
+    "fileTitle": "العنوان",
+    "fileDescription": "الوصف",
+    "descriptionPlaceholder": "ما الذي يميّز هذا العمل؟ ستشكر نفسك بعد سنة.",
+    "kind": "النوع",
+    "kinds": {
+      "THEORY": "نظري",
+      "PRACTICAL": "عملي",
+      "OTHER": "أخرى"
+    },
+    "allKinds": "كل الأنواع",
+    "semester": "الفصل",
+    "allSemesters": "كل الفصول",
+    "subject": "المادة",
+    "allSubjects": "كل المواد",
+    "noSubject": "بلا مادة",
+    "project": "المشروع",
+    "noProject": "بلا مشروع",
+    "searchPlaceholder": "ابحث في العناوين والأوصاف والمواد",
+    "empty": "الأرشيف فارغ",
+    "emptyHint": "ارفع ملف أول واجب أنجزته.",
+    "noResults": "لا نتائج",
+    "noResultsHint": "جرّب كلمة أخرى أو أزل الفلاتر.",
+    "uploading": "جارٍ الرفع…",
+    "uploaded": "رُفع الملف",
+    "updated": "حُدّثت البيانات",
+    "deleted": "حُذف الملف",
+    "deleteTitle": "حذف الملف؟",
+    "deleteDescription": "سيُحذف الملف نهائياً من المخزن. لا يمكن التراجع.",
+    "tooLarge": "الملف أكبر من الحد ({max}).",
+    "emptyFile": "الملف فارغ.",
+    "storageUnavailable": "التخزين غير مهيّأ."
   }
 }

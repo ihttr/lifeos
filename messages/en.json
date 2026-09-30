@@ -20,7 +20,8 @@
     "more": "More",
     "groupMain": "Main",
     "groupStudy": "Study",
-    "groupLife": "Life"
+    "groupLife": "Life",
+    "archive": "Archive"
   },
   "common": {
     "add": "Add",
@@ -568,5 +569,47 @@
     "learning": "Learning",
     "learningDesc": "Active paths and the next lesson in each",
     "nextLesson": "Next: {title}"
+  },
+  "archive": {
+    "title": "Archive",
+    "description": "Your finished work — a reference you come back to",
+    "summary": "{count, plural, one{# file} other{# files}} · {size}",
+    "upload": "Upload file",
+    "uploadTitle": "Upload to archive",
+    "uploadDescription": "A solved assignment, a lab report, or any work worth keeping.",
+    "editTitle": "Edit file details",
+    "file": "File",
+    "pickFile": "Choose a file",
+    "fileTitle": "Title",
+    "fileDescription": "Description",
+    "descriptionPlaceholder": "What makes this one distinct? Your future self will thank you.",
+    "kind": "Type",
+    "kinds": {
+      "THEORY": "Theory",
+      "PRACTICAL": "Practical",
+      "OTHER": "Other"
+    },
+    "allKinds": "All types",
+    "semester": "Semester",
+    "allSemesters": "All semesters",
+    "subject": "Subject",
+    "allSubjects": "All subjects",
+    "noSubject": "No subject",
+    "project": "Project",
+    "noProject": "No project",
+    "searchPlaceholder": "Search titles, descriptions and subjects",
+    "empty": "The archive is empty",
+    "emptyHint": "Upload your first finished assignment.",
+    "noResults": "No results",
+    "noResultsHint": "Try another word or clear the filters.",
+    "uploading": "Uploading...",
+    "uploaded": "File uploaded",
+    "updated": "Details updated",
+    "deleted": "File deleted",
+    "deleteTitle": "Delete this file?",
+    "deleteDescription": "The file will be permanently removed from storage. This cannot be undone.",
+    "tooLarge": "File is larger than the limit ({max}).",
+    "emptyFile": "The file is empty.",
+    "storageUnavailable": "Storage is not configured."
   }
 }

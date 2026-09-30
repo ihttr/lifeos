@@ -2,7 +2,13 @@ import "server-only"
 
 import { db } from "@/lib/db"
 import { formatDateShort, relativeDueLabel, todayISO } from "@/lib/dates"
-import { answerCallback, editMessage, sendMessage } from "@/lib/telegram"
+import {
+  answerCallback,
+  downloadFile,
+  editMessage,
+  sendMessage,
+  TELEGRAM_MAX_DOWNLOAD,
+} from "@/lib/telegram"
 import {
   matchSubject,
   parseMessage,
@@ -10,6 +16,7 @@ import {
 } from "@/lib/telegram-parse"
 import { createTaskSchema } from "@/schemas/task"
 import { createAssignmentSchema, createExamSchema } from "@/schemas/university"
+import { linkArchiveSubject, uploadArchiveFile } from "@/server/core/archive"
 import {
   createTaskFor,
   postponeTaskFor,
@@ -238,6 +245,75 @@ async function handleUniversity(
   })
 }
 
+// ------------------------------------------------------------------ الأرشيف
+
+/**
+ * ملف وصل للبوت.
+ *
+ * يُؤرشَف فوراً بلا سؤال، ثم تُعرض أزرار المواد لربطه. السبب أن الرفع
+ * هو الجزء الثمين والهشّ — لو سألنا أولاً لضاع الملف إن انشغل المستخدم
+ * أو أغلق التطبيق. الربط تفصيلٌ يُستدرك، والملف لا يُستدرك.
+ */
+export async function handleDocument(
+  userId: string,
+  chatId: string,
+  message: NonNullable<TelegramUpdate["message"]>
+) {
+  // الصور تصل بمقاسات متعددة — الأخير أكبرها
+  const doc = message.document ?? message.photo?.at(-1)
+  if (!doc) return
+
+  if ((doc.file_size ?? 0) > TELEGRAM_MAX_DOWNLOAD) {
+    const mb = Math.floor(TELEGRAM_MAX_DOWNLOAD / 1024 / 1024)
+    await sendMessage({
+      chatId,
+      text: `⚠️ الملف أكبر من ${mb} ميجا، وهو حدّ تيليجرام للبوتات.\nارفعه من الموقع بدلاً من ذلك.`,
+    })
+    return
+  }
+
+  const downloaded = await downloadFile(doc.file_id)
+  if (!downloaded) {
+    await sendMessage({ chatId, text: "⚠️ تعذّر تنزيل الملف. جرّب مرة أخرى." })
+    return
+  }
+
+  // اسم الصور لا يصل من تيليجرام، فنشتقّه من مسار الملف المؤقت
+  const filename = doc.file_name ?? downloaded.path.split("/").pop() ?? "file"
+  const title = message.caption?.trim() || filename.replace(/\.[^.]+$/, "")
+
+  try {
+    const created = await uploadArchiveFile(userId, {
+      filename,
+      body: downloaded.body,
+      contentType: doc.mime_type ?? "application/octet-stream",
+      source: "TELEGRAM",
+      meta: { title, kind: "OTHER" },
+    })
+
+    const subjects = await getActiveSubjects(userId)
+
+    await sendMessage({
+      chatId,
+      text: [`📎 أُرشف: ${title}`, subjects.length ? "اربطه بمادة؟" : ""]
+        .filter(Boolean)
+        .join("\n"),
+      buttons: subjects.length
+        ? chunk(
+            subjects.map((subject) => ({
+              text: subject.name,
+              data: `as:${created.id}:${subject.id}`,
+            })),
+            2
+          )
+        : undefined,
+    })
+  } catch (error) {
+    console.error("telegram: فشل أرشفة الملف", error)
+    await sendMessage({ chatId, text: "⚠️ تعذّرت الأرشفة." })
+  }
+}
+
 // ------------------------------------------------------------------ الإنجاز
 
 async function handleDone(userId: string, chatId: string, query: string) {
@@ -397,8 +473,30 @@ export async function handleCallback(
   userId: string,
   callback: NonNullable<TelegramUpdate["callback_query"]>
 ) {
-  const ref = parseCallback(callback.data ?? "")
+  const data = callback.data ?? ""
   const message = callback.message
+
+  // ربط ملف أرشيف بمادة — شكله مختلف عن أزرار الإنجاز والتأجيل
+  if (data.startsWith("as:") && message) {
+    const [, fileId, subjectId] = data.split(":")
+
+    try {
+      const linked = await linkArchiveSubject(userId, fileId, subjectId)
+      await answerCallback(callback.id, `📚 ${linked.subject}`)
+      await editMessage({
+        chatId: String(message.chat.id),
+        messageId: message.message_id,
+        text: `📎 أُرشف: ${linked.title}
+📚 ${linked.subject}`,
+      })
+    } catch (error) {
+      console.error("telegram: فشل ربط الملف بمادة", error)
+      await answerCallback(callback.id, "تعذّر الربط")
+    }
+    return
+  }
+
+  const ref = parseCallback(data)
 
   if (!ref || !message) {
     await answerCallback(callback.id)
