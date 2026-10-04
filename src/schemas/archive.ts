@@ -3,6 +3,7 @@ import { z } from "zod"
 import { cuid, optionalId, optionalText, requiredText } from "@/schemas/common"
 
 export const archiveKind = z.enum(["THEORY", "PRACTICAL", "OTHER"])
+export const archiveRole = z.enum(["QUESTION", "SOLUTION", "OTHER"])
 export const archiveSource = z.enum(["WEB", "TELEGRAM"])
 
 /**
@@ -14,11 +15,20 @@ export const archiveSource = z.enum(["WEB", "TELEGRAM"])
  */
 export const MAX_FILE_BYTES = 20 * 1024 * 1024
 
+/**
+ * حدّ جسم الطلب على دوال Vercel.
+ *
+ * يخصّ مسار الرفع عبر الخادم وحده. الرفع المباشر من المتصفح لا يمرّ
+ * به أصلاً، ولهذا هو الوضع المفضّل.
+ */
+export const SERVER_UPLOAD_LIMIT = 4.5 * 1024 * 1024
+
 /** ما يرافق الملف عند الرفع — لا يشمل الملف نفسه */
 export const archiveMetaSchema = z.object({
   title: requiredText(200),
   description: optionalText(2000),
   kind: archiveKind.default("OTHER"),
+  role: archiveRole.default("OTHER"),
   subjectId: optionalId,
   assignmentId: optionalId,
   projectId: optionalId,
@@ -81,6 +91,7 @@ export const archiveFiltersSchema = z.object({
 })
 
 export type ArchiveKind = z.output<typeof archiveKind>
+export type ArchiveRole = z.output<typeof archiveRole>
 export type ArchiveSource = z.output<typeof archiveSource>
 export type ArchiveMeta = z.output<typeof archiveMetaSchema>
 /**

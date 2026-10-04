@@ -301,7 +301,9 @@
     "created": "Assignment added",
     "updated": "Assignment updated",
     "deleted": "Assignment deleted",
-    "deleteConfirmTitle": "Delete this assignment?"
+    "deleteConfirmTitle": "Delete this assignment?",
+    "questionFileHint": "The question sheet as you received it",
+    "solutionFileHint": "Your finished solution — kept in the archive"
   },
   "exam": {
     "one": "Exam",
@@ -628,6 +630,13 @@
     "deleteFolderDescription": "Its contents move to the parent folder — no file is deleted.",
     "uploadFailed": "Could not upload the file.",
     "fileActions": "{name} options",
-    "folderActions": "Folder {name} options"
+    "folderActions": "Folder {name} options",
+    "clientTokenMissing": "Direct upload is off: the store has no access token. See the README.",
+    "needsDirectUpload": "File is over 4.5 MB and needs direct upload, which is not enabled.",
+    "roles": {
+      "QUESTION": "Assignment file",
+      "SOLUTION": "Solution file",
+      "OTHER": "Other file"
+    }
   }
 }

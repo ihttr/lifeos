@@ -1,7 +1,7 @@
 import { upload } from "@vercel/blob/client"
 
 import { detectFileType } from "@/lib/file-types"
-import { MAX_FILE_BYTES } from "@/schemas/archive"
+import { MAX_FILE_BYTES, SERVER_UPLOAD_LIMIT } from "@/schemas/archive"
 import { registerArchiveFile } from "@/server/actions/archive"
 
 import type { ArchiveMetaInput } from "@/schemas/archive"
@@ -32,6 +32,12 @@ export async function uploadArchiveFile(
   if (file.size > MAX_FILE_BYTES) return { ok: false, error: "archive.tooLarge" }
 
   if (!directUpload) {
+    // مسار الخادم محدود بـ 4.5 ميجا على Vercel. نقولها هنا بوضوح بدل
+    // أن يرفع المستخدم عشر ميجا ثم يصطدم بخطأ منصّة غامض.
+    if (file.size > SERVER_UPLOAD_LIMIT) {
+      return { ok: false, error: "archive.needsDirectUpload" }
+    }
+
     const form = new FormData()
     form.set("file", file)
 

@@ -1,8 +1,10 @@
 "use client"
 
 import { useTranslations } from "next-intl"
-import { type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
+import { toast } from "sonner"
 
+import { FilePickerField } from "@/components/archive/file-picker-field"
 import { ResponsiveDialog } from "@/components/shared/responsive-dialog"
 import { Button } from "@/components/ui/button"
 import {
@@ -21,10 +23,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { useRouter } from "@/i18n/navigation"
 import { useAction } from "@/hooks/use-action"
 import { useFieldErrors } from "@/hooks/use-field-errors"
 import { formDataToObject } from "@/lib/form"
 import { todayISO } from "@/lib/dates"
+import { uploadArchiveFile } from "@/lib/upload-client"
 import { createAssignment, updateAssignment } from "@/server/actions/university"
 
 import type { WorkStatus } from "@/schemas/university"
@@ -38,19 +42,85 @@ export function AssignmentFormDialog({
   assignment,
   subjects,
   defaultSubjectId,
+  directUpload,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   assignment: AssignmentDTO | null
   subjects: SubjectDTO[]
   defaultSubjectId?: string
+  /** هل يستطيع المتصفح الرفع مباشرة للمخزن — يُقرَّر على الخادم */
+  directUpload: boolean
 }) {
   const t = useTranslations()
+  const router = useRouter()
   const { pending, run } = useAction()
   const { setErrors, error: fieldError, reset: resetErrors } = useFieldErrors()
 
   const isEdit = assignment !== null
   const formId = "assignment-form"
+
+  const [question, setQuestion] = useState<File | null>(null)
+  const [solution, setSolution] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    setQuestion(null)
+    setSolution(null)
+    setUploading(false)
+  }, [open])
+
+  const attached = assignment?.archiveFiles ?? []
+
+  /**
+   * يرفع ما اختاره المستخدم بعد أن يصير للواجب معرّف.
+   *
+   * الترتيب إجباري لا تفضيل: الملف يُربط بـ assignmentId، وهو لا يوجد
+   * قبل الإنشاء. ولهذا لا يمكن دمج الرفع في نفس الإجراء.
+   */
+  async function uploadAttachments(assignmentId: string, subjectId: string) {
+    const picks = [
+      { file: question, role: "QUESTION" as const },
+      { file: solution, role: "SOLUTION" as const },
+    ].filter((p): p is { file: File; role: "QUESTION" | "SOLUTION" } =>
+      p.file !== null
+    )
+
+    if (picks.length === 0) return true
+
+    setUploading(true)
+    let allOk = true
+
+    for (const pick of picks) {
+      const result = await uploadArchiveFile(
+        pick.file,
+        {
+          title: pick.file.name.replace(/\.[^.]+$/, ""),
+          role: pick.role,
+          assignmentId,
+          subjectId,
+        },
+        { directUpload }
+      )
+
+      if (!result.ok) {
+        allOk = false
+        // كل ملف يُبلَّغ عنه وحده: نجاح أحدهما وفشل الآخر حالةٌ واقعية
+        toast.error(t(`archive.${result.error.replace("archive.", "")}`), {
+          description: result.detail,
+        })
+      }
+    }
+
+    setUploading(false)
+
+    // الرفع يمرّ بمسار API لا بـ server action، فلا يصل العميلَ ردٌّ
+    // يحدّث الشجرة. بدونه يبقى الواجب بلا مرفقات حتى إعادة التحميل.
+    router.refresh()
+
+    return allOk
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -66,11 +136,18 @@ export function AssignmentFormDialog({
       {
         success: isEdit ? "assignment.updated" : "assignment.created",
         silentValidation: true,
-        onSuccess: () => onOpenChange(false),
+        onSuccess: async (data) => {
+          const id = isEdit ? assignment.id : (data as { id: string }).id
+          const ok = await uploadAttachments(id, String(input.subjectId ?? ""))
+          // يبقى الحوار مفتوحاً عند فشل الرفع ليعيد المحاولة بلا إعادة إدخال
+          if (ok) onOpenChange(false)
+        },
         onError: (_error, fieldErrors) => setErrors(fieldErrors ?? {}),
       }
     )
   }
+
+  const busy = pending || uploading
 
   return (
     <ResponsiveDialog
@@ -86,12 +163,14 @@ export function AssignmentFormDialog({
           >
             {t("common.cancel")}
           </Button>
-          <Button type="submit" form={formId} disabled={pending}>
-            {pending
-              ? t("common.saving")
-              : isEdit
-                ? t("common.save")
-                : t("common.create")}
+          <Button type="submit" form={formId} disabled={busy}>
+            {uploading
+              ? t("archive.uploading")
+              : pending
+                ? t("common.saving")
+                : isEdit
+                  ? t("common.save")
+                  : t("common.create")}
           </Button>
         </>
       }
@@ -241,6 +320,25 @@ export function AssignmentFormDialog({
             </Field>
           </div>
           <FieldDescription>{t("assignment.gradeHint")}</FieldDescription>
+          <FilePickerField
+            id="assignment-question-file"
+            label={t("archive.roles.QUESTION")}
+            description={t("assignment.questionFileHint")}
+            file={question}
+            onPick={setQuestion}
+            disabled={busy}
+            existing={attached.filter((f) => f.role === "QUESTION")}
+          />
+
+          <FilePickerField
+            id="assignment-solution-file"
+            label={t("archive.roles.SOLUTION")}
+            description={t("assignment.solutionFileHint")}
+            file={solution}
+            onPick={setSolution}
+            disabled={busy}
+            existing={attached.filter((f) => f.role === "SOLUTION")}
+          />
         </FieldGroup>
       </form>
     </ResponsiveDialog>

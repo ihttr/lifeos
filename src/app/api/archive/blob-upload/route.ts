@@ -1,6 +1,6 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client"
 
-import { buildPathname, isBlobConfigured } from "@/lib/storage"
+import { buildPathname, canClientUpload } from "@/lib/storage"
 import { MAX_FILE_BYTES } from "@/schemas/archive"
 import { requireUserId } from "@/server/auth"
 
@@ -19,9 +19,14 @@ import { requireUserId } from "@/server/auth"
 export const dynamic = "force-dynamic"
 
 export async function POST(request: Request): Promise<Response> {
-  if (!isBlobConfigured()) {
+  if (!canClientUpload()) {
+    // سببٌ محدّد لا رسالة عامة: هذا بالضبط ما يفرّق بين متجر مربوط
+    // بـ OIDC ومتجرٍ يملك رمزاً ثابتاً.
+    console.error(
+      "archive: BLOB_READ_WRITE_TOKEN غير معرّف — الرفع المباشر معطّل"
+    )
     return Response.json(
-      { ok: false, error: "archive.storageUnavailable" },
+      { ok: false, error: "archive.clientTokenMissing" },
       { status: 503 }
     )
   }

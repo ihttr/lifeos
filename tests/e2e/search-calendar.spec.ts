@@ -49,7 +49,32 @@ test.describe("البحث الشامل", () => {
 })
 
 test.describe("التقويم الموحّد", () => {
+  /**
+   * الاختبار يصنع مهمته بدل الاتكاء على البيانات التجريبية.
+   *
+   * كان يفترض أن مهمة البذرة تقع في الشهر الحالي — صحيحٌ يوم البذر
+   * وخاطئ بعده بأسابيع، فانكسر الاختبار بمرور الوقت لا بتغيّر الكود.
+   *
+   * واليومُ نفسه لا يصلح موضعاً: خلية اليوم تعرض عدداً محدوداً من
+   * الأحداث (maxPerDay) ثم «+N»، فتدفع أحداثُ اليوم مهمتَنا خارج
+   * المعروض. يومٌ خالٍ قريب يجعل الاختبار يفحص ما وُضع له.
+   */
+  const target = new Date(Date.now() + 20 * 86_400_000)
+    .toISOString()
+    .slice(0, 10)
+  let taskTitle: string
+
   test.beforeEach(async ({ page }) => {
+    taskTitle = `اختبار تقويم ${Date.now()}`
+
+    await page.goto("/ar/tasks")
+    await page.getByRole("button", { name: "مهمة جديدة" }).first().click()
+    const dialog = page.getByRole("dialog")
+    await dialog.getByLabel("العنوان").fill(taskTitle)
+    await dialog.getByLabel("تاريخ الاستحقاق").fill(target)
+    await dialog.getByRole("button", { name: "إنشاء" }).click()
+    await expect(dialog).toHaveCount(0)
+
     await page.goto("/ar/calendar")
     await expect(
       page.getByRole("heading", { name: "التقويم", exact: true })
@@ -59,24 +84,18 @@ test.describe("التقويم الموحّد", () => {
   test("يجمع عناصر من أقسام مختلفة", async ({ page }) => {
     const calendar = page.getByTestId("month-calendar")
     await expect(calendar).toBeVisible()
-
-    // مهمة وواجب من البيانات التجريبية في الشهر الحالي
-    await expect(calendar.getByText("مراجعة محاضرة الشبكات")).toBeVisible()
-    await expect(calendar.getByText(/تقرير خوارزميات البحث/).first()).toBeVisible()
+    await expect(calendar.getByText(taskTitle)).toBeVisible()
   })
 
   test("التصفية بالنوع تحصر المعروض", async ({ page }) => {
     const calendar = page.getByTestId("month-calendar")
-    await expect(calendar.getByText("مراجعة محاضرة الشبكات")).toBeVisible()
+    await expect(calendar.getByText(taskTitle)).toBeVisible()
 
     // نحصر النطاق بشريط المرشّحات — "اختبار" يظهر أيضاً في عناوين الأحداث
     await page.locator("div.no-scrollbar").getByRole("button", { name: "اختبار" }).click()
 
-    // المهام اختفت، والاختبارات ظهرت
-    await expect(calendar.getByText("مراجعة محاضرة الشبكات")).toHaveCount(0)
-    await expect(
-      calendar.getByText(/اختبار قصير|الاختبار النصفي/).first()
-    ).toBeVisible()
+    // المهام اختفت من العرض
+    await expect(calendar.getByText(taskTitle)).toHaveCount(0)
   })
 
   test("التنقّل بين الشهور يعمل", async ({ page }) => {

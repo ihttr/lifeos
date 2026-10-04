@@ -69,6 +69,16 @@ enum ArchiveKind {
   OTHER
 }
 
+/// دور الملف من الواجب: ورقة الأسئلة أم الحل.
+///
+/// محورٌ مستقل عن ArchiveKind: ذاك يصف طبيعة المادة (نظري/عملي)،
+/// وهذا يصف موضع الملف من العمل. ملفٌ واحد قد يكون «عملي» و«حل» معاً.
+enum ArchiveRole {
+  QUESTION
+  SOLUTION
+  OTHER
+}
+
 /// من أين وصل الملف — مفيد للتشخيص ولمعرفة ما رُفع من الجوال
 enum ArchiveSource {
   WEB
@@ -574,6 +584,7 @@ model ArchiveFile {
   contentType String
 
   kind   ArchiveKind   @default(OTHER)
+  role   ArchiveRole   @default(OTHER)
   source ArchiveSource @default(WEB)
 
   subjectId    String?

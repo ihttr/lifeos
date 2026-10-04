@@ -3,7 +3,11 @@ import "server-only"
 import { db } from "@/lib/db"
 import { requireUserId } from "@/server/auth"
 
-import type { ArchiveFilters, ArchiveKind } from "@/schemas/archive"
+import type {
+  ArchiveFilters,
+  ArchiveKind,
+  ArchiveRole,
+} from "@/schemas/archive"
 
 /**
  * قراءة الأرشيف.
@@ -18,6 +22,7 @@ export type ArchiveFileDTO = {
   title: string
   description: string | null
   kind: ArchiveKind
+  role: ArchiveRole
   size: number
   contentType: string
   createdAt: Date
@@ -33,6 +38,7 @@ const SELECT = {
   title: true,
   description: true,
   kind: true,
+  role: true,
   size: true,
   contentType: true,
   createdAt: true,

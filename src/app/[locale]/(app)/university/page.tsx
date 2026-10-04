@@ -1,3 +1,4 @@
+import { canClientUpload } from "@/lib/storage"
 import { getTranslations, setRequestLocale } from "next-intl/server"
 
 import { PageContainer } from "@/components/shared/page-header"
@@ -41,6 +42,7 @@ export default async function UniversityPage({
     return (
       <PageContainer>
         <UniversityView
+          directUpload={canClientUpload()}
           semesters={[]}
           activeSemesterId={null}
           subjects={[]}
@@ -72,6 +74,7 @@ export default async function UniversityPage({
   return (
     <PageContainer>
       <UniversityView
+          directUpload={canClientUpload()}
         semesters={semesters}
         activeSemesterId={semesterId}
         subjects={subjects}

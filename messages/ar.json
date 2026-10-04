@@ -301,7 +301,9 @@
     "created": "تمت إضافة الواجب",
     "updated": "تم تحديث الواجب",
     "deleted": "تم حذف الواجب",
-    "deleteConfirmTitle": "حذف الواجب؟"
+    "deleteConfirmTitle": "حذف الواجب؟",
+    "questionFileHint": "ورقة الأسئلة كما وصلتك",
+    "solutionFileHint": "حلّك بعد إنجازه — يُحفظ في الأرشيف"
   },
   "exam": {
     "one": "اختبار",
@@ -628,6 +630,13 @@
     "deleteFolderDescription": "ما بداخله ينتقل للمجلد الأب — لا يُحذف أي ملف.",
     "uploadFailed": "تعذّر رفع الملف.",
     "fileActions": "خيارات {name}",
-    "folderActions": "خيارات مجلد {name}"
+    "folderActions": "خيارات مجلد {name}",
+    "clientTokenMissing": "الرفع المباشر معطّل: المتجر غير مرتبط برمز وصول. راجع README.",
+    "needsDirectUpload": "الملف أكبر من 4.5 ميجا ويحتاج رفعاً مباشراً — غير مفعّل حالياً.",
+    "roles": {
+      "QUESTION": "ملف الواجب",
+      "SOLUTION": "ملف الحل",
+      "OTHER": "ملف آخر"
+    }
   }
 }

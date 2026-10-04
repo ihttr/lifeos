@@ -1,3 +1,5 @@
+import type { ArchiveRole } from "@/schemas/archive"
+
 import "server-only"
 
 import { db } from "@/lib/db"
@@ -133,6 +135,13 @@ const assignmentSelect = {
   maxGrade: true,
   subjectId: true,
   subject: { select: { id: true, name: true, color: true } },
+  // الملفات المرفقة: ورقة الواجب وحلّه. مرتّبة بالدور ثم بالأحدث،
+  // فيظهر السؤال قبل الحل كما يقرأهما المرء.
+  archiveFiles: {
+    select: { id: true, title: true, role: true, filename: true },
+    orderBy: [{ role: "asc" }, { createdAt: "desc" }],
+    take: 10,
+  },
 } satisfies Prisma.AssignmentSelect
 
 export type AssignmentDTO = {
@@ -148,6 +157,12 @@ export type AssignmentDTO = {
   maxGrade: number | null
   subjectId: string
   subject: { id: string; name: string; color: string | null }
+  archiveFiles: {
+    id: string
+    title: string
+    role: ArchiveRole
+    filename: string
+  }[]
 }
 
 export async function getAssignments(

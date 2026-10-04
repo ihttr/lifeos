@@ -29,10 +29,23 @@ export type ReadResult = {
 
 const LOCAL_ROOT = resolve(process.cwd(), ".storage")
 
+/** هل المخزن متاح للقراءة والكتابة من الخادم؟ OIDC يكفي لهذا. */
 export function isBlobConfigured(): boolean {
-  return Boolean(
-    process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID
-  )
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID)
+}
+
+/**
+ * هل يستطيع المتصفح الرفع مباشرة إلى المخزن؟
+ *
+ * قدرةٌ أضيق من مجرد وجود المخزن: توقيع رمزٍ للمتصفح يتطلّب
+ * BLOB_READ_WRITE_TOKEN بعينه. ربط المتجر بـ OIDC يعطي BLOB_STORE_ID
+ * و VERCEL_OIDC_TOKEN فقط — يكفيان للخادم ولا يكفيان لتوقيع رمز عميل،
+ * فيفشل الرفع بـ «Failed to retrieve the client token».
+ *
+ * خلطهما في فحص واحد كان يجعل الواجهة تختار مساراً لا يعمل.
+ */
+export function canClientUpload(): boolean {
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN)
 }
 
 /**

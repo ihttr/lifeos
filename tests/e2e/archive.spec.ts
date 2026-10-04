@@ -369,3 +369,86 @@ test.describe("المجلدات", () => {
     await expect(page.locator("li").filter({ hasText: title })).toBeVisible()
   })
 })
+
+// ------------------------------------------------------------------ الواجبات
+
+test.describe("إرفاق ملفات بالواجب", () => {
+  function file(name: string, body: string) {
+    return { name, mimeType: "", buffer: Buffer.from(body) }
+  }
+
+  /** يفتح نموذج واجب جديد ويملأ الحقول الإلزامية */
+  async function newAssignment(
+    page: import("@playwright/test").Page,
+    title: string
+  ) {
+    await page.goto("/ar/university?tab=assignments")
+    await page.getByRole("button", { name: "واجب جديد" }).first().click()
+
+    const dialog = page.getByRole("dialog")
+    await dialog.getByLabel("عنوان الواجب").fill(title)
+    // فلتر المادة في الخلفية يحمل نفس التسمية — نحصر النطاق بالنافذة
+    await dialog.getByLabel("المادة").click()
+    await page.getByRole("option", { name: "الشبكات", exact: true }).click()
+    await dialog.getByLabel("تاريخ الاستحقاق").fill("2027-05-20")
+
+    return dialog
+  }
+
+  test("إنشاء واجب مع ملف الأسئلة وملف الحل", async ({ page }) => {
+    const title = `أرشيف واجب مرفق ${Date.now()}`
+    const dialog = await newAssignment(page, title)
+
+    await dialog
+      .locator("#assignment-question-file")
+      .setInputFiles(file(`${title} أسئلة.pdf`, "%PDF-1.4"))
+    await dialog
+      .locator("#assignment-solution-file")
+      .setInputFiles(file(`${title} حل.py`, "print('x')"))
+
+    await dialog.getByRole("button", { name: "إنشاء" }).click()
+    await expect(dialog).toHaveCount(0)
+
+    // الملفان في الأرشيف — والبحث يجدهما أينما كانا
+    await page.goto("/ar/archive")
+    await page.getByPlaceholder("ابحث في العناوين").fill(title)
+
+    await expect(
+      page.locator("li").filter({ hasText: `${title} أسئلة` })
+    ).toBeVisible()
+    await expect(
+      page.locator("li").filter({ hasText: `${title} حل` })
+    ).toBeVisible()
+  })
+
+  test("تعديل الواجب يعرض المرفق ويسمح بإضافة الحل لاحقاً", async ({
+    page,
+  }) => {
+    const title = `أرشيف واجب لاحق ${Date.now()}`
+    const dialog = await newAssignment(page, title)
+
+    await dialog
+      .locator("#assignment-question-file")
+      .setInputFiles(file(`${title} أسئلة.pdf`, "%PDF-1.4"))
+    await dialog.getByRole("button", { name: "إنشاء" }).click()
+    await expect(dialog).toHaveCount(0)
+
+    // فتح التعديل: ملف الأسئلة يظهر كرابط لا كحقل فارغ
+    await page.getByRole("button", { name: title, exact: true }).click()
+    const edit = page.getByRole("dialog")
+    await expect(
+      edit.getByRole("link", { name: `${title} أسئلة` })
+    ).toBeVisible()
+
+    await edit
+      .locator("#assignment-solution-file")
+      .setInputFiles(file(`${title} حل متأخر.py`, "print('y')"))
+    await edit.getByRole("button", { name: "حفظ" }).click()
+    await expect(edit).toHaveCount(0)
+
+    await page.getByRole("button", { name: title, exact: true }).click()
+    await expect(
+      page.getByRole("dialog").getByRole("link", { name: `${title} حل متأخر` })
+    ).toBeVisible()
+  })
+})

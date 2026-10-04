@@ -2,7 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server"
 
 import { ArchiveView } from "@/components/archive/archive-view"
 import { PageContainer } from "@/components/shared/page-header"
-import { isBlobConfigured } from "@/lib/storage"
+import { canClientUpload } from "@/lib/storage"
 import { archiveFiltersSchema } from "@/schemas/archive"
 import {
   getAllFolders,
@@ -52,9 +52,10 @@ export default async function ArchivePage({
         allFolders={allFolders}
         options={options}
         filters={filters}
-        // وجود المخزن يقرَّر على الخادم ويُمرَّر كخاصية: العميل لا يقرأ
-        // متغيّرات البيئة، والرفع المباشر لا يعمل بلا مخزن مهيّأ.
-        directUpload={isBlobConfigured()}
+        // القدرة تُقرَّر على الخادم وتُمرَّر كخاصية: العميل لا يقرأ
+        // متغيّرات البيئة. وبدون رمز عميل يرجع الرفع لمسار الخادم،
+        // الذي يعمل حتى 4.5 ميجا — أفضل من فشلٍ تام.
+        directUpload={canClientUpload()}
       />
     </PageContainer>
   )

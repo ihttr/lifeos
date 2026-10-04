@@ -88,6 +88,7 @@ export function UniversityView({
   exams,
   summary,
   filters,
+  directUpload,
 }: {
   semesters: SemesterDTO[]
   activeSemesterId: string | null
@@ -95,6 +96,8 @@ export function UniversityView({
   assignments: AssignmentDTO[]
   exams: ExamDTO[]
   summary: Summary
+  /** قدرة الرفع المباشر — تُقرَّر على الخادم وتصل لحوار الواجب */
+  directUpload: boolean
   filters: UniversityFilters
 }) {
   const t = useTranslations()
@@ -689,6 +692,7 @@ export function UniversityView({
       ) : null}
 
       <AssignmentFormDialog
+        directUpload={directUpload}
         open={assignmentOpen}
         onOpenChange={setAssignmentOpen}
         assignment={editingAssignment}
